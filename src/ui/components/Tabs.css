@@ -1,0 +1,73 @@
+/* Tabs Component Styles */
+
+.ui-tabs {
+    display: flex;
+    gap: var(--ui-space-1);
+    border-bottom: 1px solid var(--ui-border);
+    margin-bottom: var(--ui-space-4);
+}
+
+.ui-tabs__tab {
+    display: flex;
+    align-items: center;
+    gap: var(--ui-space-2);
+    padding: var(--ui-space-2) var(--ui-space-3);
+    font-size: var(--ui-text-sm);
+    font-weight: var(--ui-font-medium);
+    color: var(--ui-text-muted);
+    background: none;
+    border: none;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -1px;
+    cursor: pointer;
+    transition: color 0.15s ease, border-color 0.15s ease;
+}
+
+.ui-tabs__tab:hover {
+    color: var(--ui-text);
+}
+
+.ui-tabs__tab--active {
+    color: var(--ui-text-bright);
+    border-bottom-color: var(--ui-primary);
+}
+
+.ui-tabs__icon {
+    display: flex;
+    align-items: center;
+    opacity: 0.7;
+}
+
+.ui-tabs__tab--active .ui-tabs__icon {
+    opacity: 1;
+}
+
+.ui-tabs__label {
+    white-space: nowrap;
+}
+
+/* Size variants */
+.ui-tabs--sm .ui-tabs__tab {
+    padding: var(--ui-space-1) var(--ui-space-2);
+    font-size: var(--ui-text-xs);
+}
+
+.ui-tabs--lg .ui-tabs__tab {
+    padding: var(--ui-space-3) var(--ui-space-4);
+    font-size: var(--ui-text-md);
+}
+
+/* Tab Panel */
+.ui-tab-panel {
+    animation: fadeIn 0.15s ease;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+}

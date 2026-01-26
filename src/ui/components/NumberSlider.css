@@ -1,0 +1,94 @@
+/* NumberSlider Component Styles */
+
+.ui-number-slider {
+    display: flex;
+    align-items: center;
+    gap: var(--ui-space-2);
+}
+
+.ui-number-slider--disabled {
+    opacity: 0.5;
+    pointer-events: none;
+}
+
+.ui-number-slider__track-wrapper {
+    flex: 1;
+    position: relative;
+}
+
+.ui-number-slider__range {
+    width: 100%;
+    height: 4px;
+    appearance: none;
+    background: var(--ui-bg-surface);
+    border-radius: var(--ui-radius-full);
+    cursor: pointer;
+}
+
+.ui-number-slider__range::-webkit-slider-runnable-track {
+    height: 4px;
+    background: linear-gradient(to right,
+            var(--ui-primary) 0%,
+            var(--ui-primary) var(--slider-percentage, 50%),
+            var(--ui-bg-surface) var(--slider-percentage, 50%),
+            var(--ui-bg-surface) 100%);
+    border-radius: var(--ui-radius-full);
+}
+
+.ui-number-slider__range::-webkit-slider-thumb {
+    appearance: none;
+    width: 14px;
+    height: 14px;
+    background: var(--ui-text-bright);
+    border: 2px solid var(--ui-primary);
+    border-radius: 50%;
+    margin-top: -5px;
+    cursor: grab;
+    transition: var(--ui-transition-transform);
+}
+
+.ui-number-slider__range::-webkit-slider-thumb:hover {
+    transform: scale(1.1);
+}
+
+.ui-number-slider__range::-webkit-slider-thumb:active {
+    cursor: grabbing;
+}
+
+.ui-number-slider__range::-moz-range-track {
+    height: 4px;
+    background: var(--ui-bg-surface);
+    border-radius: var(--ui-radius-full);
+}
+
+.ui-number-slider__range::-moz-range-progress {
+    height: 4px;
+    background: var(--ui-primary);
+    border-radius: var(--ui-radius-full);
+}
+
+.ui-number-slider__range::-moz-range-thumb {
+    width: 14px;
+    height: 14px;
+    background: var(--ui-text-bright);
+    border: 2px solid var(--ui-primary);
+    border-radius: 50%;
+    cursor: grab;
+}
+
+.ui-number-slider__input {
+    width: 60px;
+    background: var(--ui-bg-input);
+    border: 1px solid var(--ui-bg-input);
+    border-radius: var(--ui-input-radius);
+    color: var(--ui-text-bright);
+    font-size: var(--ui-text-sm);
+    padding: 4px 6px;
+    text-align: center;
+    flex-shrink: 0;
+}
+
+.ui-number-slider__input:focus {
+    outline: 1px solid var(--ui-primary);
+    background: var(--ui-bg-input-focus);
+}

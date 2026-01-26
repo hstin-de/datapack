@@ -1,0 +1,224 @@
+/* Input Component Styles */
+
+/* Input Wrapper */
+.ui-input-wrapper {
+    display: flex;
+    align-items: center;
+    position: relative;
+    background: var(--ui-bg-input);
+    border: 1px solid var(--ui-bg-input);
+    border-radius: var(--ui-input-radius);
+    transition: var(--ui-transition-colors);
+}
+
+.ui-input-wrapper:focus-within {
+    outline: 1px solid var(--ui-primary);
+    background: var(--ui-bg-input-focus);
+    border-color: var(--ui-bg-input-focus);
+}
+
+.ui-input-wrapper--error {
+    border-color: var(--ui-error);
+}
+
+.ui-input-wrapper--error:focus-within {
+    outline-color: var(--ui-error);
+}
+
+/* Input Element */
+.ui-input {
+    flex: 1;
+    min-width: 0;
+    background: transparent;
+    border: none;
+    color: var(--ui-text-bright);
+    font-family: var(--ui-font-sans);
+    font-size: var(--ui-text-base);
+    padding: var(--ui-input-padding-y) var(--ui-input-padding-x);
+    outline: none;
+}
+
+.ui-input::placeholder {
+    color: var(--ui-text-muted);
+}
+
+.ui-input:disabled {
+    color: var(--ui-text-disabled);
+    cursor: not-allowed;
+}
+
+/* Input Sizes */
+.ui-input-wrapper--sm .ui-input {
+    font-size: var(--ui-text-sm);
+    padding: 2px 6px;
+}
+
+.ui-input-wrapper--lg .ui-input {
+    font-size: var(--ui-text-md);
+    padding: 6px 10px;
+}
+
+/* Prefix/Suffix */
+.ui-input__prefix,
+.ui-input__suffix {
+    display: flex;
+    align-items: center;
+    color: var(--ui-text-muted);
+    padding: 0 var(--ui-space-2);
+    flex-shrink: 0;
+}
+
+.ui-input__prefix {
+    padding-right: 0;
+}
+
+.ui-input__suffix {
+    padding-left: 0;
+}
+
+.ui-input-wrapper--has-prefix .ui-input {
+    padding-left: var(--ui-space-1);
+}
+
+.ui-input-wrapper--has-suffix .ui-input {
+    padding-right: var(--ui-space-1);
+}
+
+/* TextArea */
+.ui-textarea {
+    width: 100%;
+    min-height: 80px;
+    background: var(--ui-bg-input);
+    border: 1px solid var(--ui-bg-input);
+    border-radius: var(--ui-input-radius);
+    color: var(--ui-text-bright);
+    font-family: var(--ui-font-sans);
+    font-size: var(--ui-text-base);
+    padding: var(--ui-input-padding-y) var(--ui-input-padding-x);
+    resize: vertical;
+    transition: var(--ui-transition-colors);
+}
+
+.ui-textarea:focus {
+    outline: 1px solid var(--ui-primary);
+    background: var(--ui-bg-input-focus);
+    border-color: var(--ui-bg-input-focus);
+}
+
+.ui-textarea--error {
+    border-color: var(--ui-error);
+}
+
+.ui-textarea--error:focus {
+    outline-color: var(--ui-error);
+}
+
+.ui-textarea::placeholder {
+    color: var(--ui-text-muted);
+}
+
+/* Select */
+.ui-select {
+    width: 100%;
+    background: var(--ui-bg-input);
+    border: 1px solid var(--ui-bg-input);
+    border-radius: var(--ui-input-radius);
+    color: var(--ui-text-bright);
+    font-family: var(--ui-font-sans);
+    font-size: var(--ui-text-base);
+    padding: var(--ui-input-padding-y) var(--ui-input-padding-x);
+    padding-right: var(--ui-space-6);
+    cursor: pointer;
+    transition: var(--ui-transition-colors);
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23969696' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 8px center;
+}
+
+.ui-select option,
+.ui-select optgroup {
+    background: var(--ui-bg-surface);
+    color: var(--ui-text-bright);
+}
+
+.ui-select optgroup {
+    font-weight: 600;
+}
+
+.ui-select:focus {
+    outline: 1px solid var(--ui-primary);
+    background-color: var(--ui-bg-input-focus);
+    border-color: var(--ui-bg-input-focus);
+}
+
+.ui-select--error {
+    border-color: var(--ui-error);
+}
+
+.ui-select--sm {
+    font-size: var(--ui-text-sm);
+    padding: 2px 6px;
+    padding-right: var(--ui-space-5);
+}
+
+.ui-select--lg {
+    font-size: var(--ui-text-md);
+    padding: 6px 10px;
+    padding-right: var(--ui-space-8);
+}
+
+/* Checkbox */
+.ui-checkbox {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--ui-space-2);
+    cursor: pointer;
+    user-select: none;
+}
+
+.ui-checkbox--disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
+}
+
+.ui-checkbox__input {
+    position: absolute;
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.ui-checkbox__box {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 16px;
+    height: 16px;
+    background: var(--ui-bg-input);
+    border: 1px solid var(--ui-border);
+    border-radius: var(--ui-radius-sm);
+    transition: var(--ui-transition-colors);
+    flex-shrink: 0;
+}
+
+.ui-checkbox__box svg {
+    width: 12px;
+    height: 12px;
+    color: var(--ui-text-bright);
+}
+
+.ui-checkbox__input:checked+.ui-checkbox__box {
+    background: var(--ui-primary);
+    border-color: var(--ui-primary);
+}
+
+.ui-checkbox__input:focus+.ui-checkbox__box {
+    outline: 1px solid var(--ui-primary);
+    outline-offset: 1px;
+}
+
+.ui-checkbox__label {
+    font-size: var(--ui-text-sm);
+    color: var(--ui-text);
+}

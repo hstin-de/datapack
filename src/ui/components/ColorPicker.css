@@ -1,0 +1,57 @@
+/* ColorPicker Component Styles */
+
+.ui-color-picker {
+    display: flex;
+    align-items: center;
+    gap: var(--ui-space-2);
+}
+
+.ui-color-picker--disabled {
+    opacity: 0.5;
+    pointer-events: none;
+}
+
+.ui-color-picker__swatch {
+    width: 24px;
+    height: 24px;
+    padding: 0;
+    border: 1px solid var(--ui-border);
+    border-radius: var(--ui-radius-sm);
+    cursor: pointer;
+    flex-shrink: 0;
+}
+
+.ui-color-picker__swatch::-webkit-color-swatch-wrapper {
+    padding: 0;
+}
+
+.ui-color-picker__swatch::-webkit-color-swatch {
+    border: none;
+    border-radius: var(--ui-radius-sm);
+}
+
+.ui-color-picker__input {
+    flex: 1;
+    min-width: 80px;
+    background: var(--ui-bg-input);
+    border: 1px solid var(--ui-bg-input);
+    border-radius: var(--ui-input-radius);
+    color: var(--ui-text-bright);
+    font-family: var(--ui-font-mono);
+    font-size: var(--ui-text-sm);
+    padding: 4px 6px;
+}
+
+.ui-color-picker__input:focus {
+    outline: 1px solid var(--ui-primary);
+    background: var(--ui-bg-input-focus);
+    border-color: var(--ui-bg-input-focus);
+}
+
+.ui-color-picker__toggle {
+    width: 16px;
+    height: 16px;
+    accent-color: var(--ui-primary);
+    cursor: pointer;
+    flex-shrink: 0;
+}

@@ -1,0 +1,91 @@
+/* JsonEditor Component Styles */
+
+.ui-json-editor {
+    display: flex;
+    flex-direction: column;
+    gap: var(--ui-space-2);
+}
+
+.ui-json-editor__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--ui-space-3);
+}
+
+.ui-json-editor__label {
+    font-size: var(--ui-text-sm);
+    font-weight: var(--ui-font-semibold);
+    color: var(--ui-text);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.ui-json-editor__error-badge {
+    font-size: var(--ui-text-xs);
+    font-weight: var(--ui-font-medium);
+    color: var(--ui-error);
+    padding: 2px 6px;
+    background-color: var(--ui-error-bg);
+    border-radius: var(--ui-radius-sm);
+}
+
+.ui-json-editor__textarea {
+    width: 100%;
+    padding: var(--ui-space-3);
+    font-family: var(--ui-font-mono);
+    font-size: var(--ui-text-sm);
+    line-height: var(--ui-leading-normal);
+    color: var(--ui-text);
+    background-color: var(--ui-bg-surface);
+    border: 1px solid var(--ui-border);
+    border-radius: var(--ui-radius-sm);
+    resize: vertical;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.ui-json-editor__textarea:focus {
+    outline: none;
+    border-color: var(--ui-primary);
+    box-shadow: 0 0 0 2px var(--ui-primary-subtle);
+}
+
+.ui-json-editor--error .ui-json-editor__textarea {
+    border-color: var(--ui-error);
+}
+
+.ui-json-editor--error .ui-json-editor__textarea:focus {
+    box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.2);
+}
+
+.ui-json-editor--disabled .ui-json-editor__textarea {
+    opacity: 0.6;
+    cursor: not-allowed;
+    background-color: var(--ui-bg-hover);
+}
+
+.ui-json-editor__error {
+    padding: var(--ui-space-2) var(--ui-space-3);
+    font-size: var(--ui-text-sm);
+    color: var(--ui-error);
+    background-color: var(--ui-error-bg);
+    border: 1px solid var(--ui-error);
+    border-radius: var(--ui-radius-sm);
+}
+
+/* Multi-editor layout */
+.ui-multi-json-editor {
+    display: flex;
+    gap: var(--ui-space-4);
+}
+
+.ui-multi-json-editor>.ui-json-editor {
+    flex: 1;
+}
+
+/* Responsive: stack on narrow screens */
+@media (max-width: 768px) {
+    .ui-multi-json-editor {
+        flex-direction: column;
+    }
+}

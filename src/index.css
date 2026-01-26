@@ -1,0 +1,14 @@
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: var(--ui-font-sans);
+  background: var(--ui-bg-base);
+  color: var(--ui-text);
+}
+
+#root {
+  min-height: 100vh;
+}

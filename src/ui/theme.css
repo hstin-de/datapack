@@ -1,0 +1,456 @@
+/**
+ * UI Framework Theme - Design Token System
+ * 
+ * Ein VS Code-ähnliches Design System für den MC Worldgen Builder.
+ * Import this file once at the root of your application.
+ */
+
+:root {
+  /* ============================================
+   * COLOR PALETTE
+   * ============================================ */
+
+  /* Background Colors */
+  --ui-bg-base: #1e1e1e;
+  --ui-bg-elevated: #252526;
+  --ui-bg-surface: #2d2d2d;
+  --ui-bg-hover: #2a2d2e;
+  --ui-bg-active: #37373d;
+  --ui-bg-input: #3c3c3c;
+  --ui-bg-input-focus: #464646;
+
+  /* Primary Colors */
+  --ui-primary: #007acc;
+  --ui-primary-hover: #0098ff;
+  --ui-primary-active: #005a9e;
+  --ui-primary-subtle: rgba(0, 122, 204, 0.15);
+
+  /* Semantic Colors */
+  --ui-success: #89d185;
+  --ui-success-bg: rgba(137, 209, 133, 0.15);
+  --ui-warning: #cca700;
+  --ui-warning-bg: rgba(204, 167, 0, 0.15);
+  --ui-error: #f48771;
+  --ui-error-bg: rgba(244, 135, 113, 0.15);
+  --ui-info: #75beff;
+  --ui-info-bg: rgba(117, 190, 255, 0.15);
+
+  /* Text Colors */
+  --ui-text: #cccccc;
+  --ui-text-muted: #969696;
+  --ui-text-bright: #ffffff;
+  --ui-text-disabled: #5a5a5a;
+  --ui-text-inverse: #1e1e1e;
+
+  /* Border Colors */
+  --ui-border: #3e3e42;
+  --ui-border-subtle: #2b2b2b;
+  --ui-border-focus: var(--ui-primary);
+  --ui-border-error: var(--ui-error);
+
+  /* ============================================
+   * SPACING SCALE (4px based)
+   * ============================================ */
+  --ui-space-0: 0;
+  --ui-space-1: 4px;
+  --ui-space-2: 8px;
+  --ui-space-3: 12px;
+  --ui-space-4: 16px;
+  --ui-space-5: 20px;
+  --ui-space-6: 24px;
+  --ui-space-8: 32px;
+  --ui-space-10: 40px;
+  --ui-space-12: 48px;
+  --ui-space-16: 64px;
+
+  /* ============================================
+   * TYPOGRAPHY
+   * ============================================ */
+  --ui-font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --ui-font-mono: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
+
+  /* Font Sizes */
+  --ui-text-xs: 11px;
+  --ui-text-sm: 12px;
+  --ui-text-base: 13px;
+  --ui-text-md: 14px;
+  --ui-text-lg: 16px;
+  --ui-text-xl: 18px;
+  --ui-text-2xl: 24px;
+
+  /* Line Heights */
+  --ui-leading-tight: 1.25;
+  --ui-leading-normal: 1.5;
+  --ui-leading-relaxed: 1.75;
+
+  /* Font Weights */
+  --ui-font-normal: 400;
+  --ui-font-medium: 500;
+  --ui-font-semibold: 600;
+  --ui-font-bold: 700;
+
+  /* ============================================
+   * BORDER RADIUS
+   * ============================================ */
+  --ui-radius-none: 0;
+  --ui-radius-sm: 2px;
+  --ui-radius-md: 4px;
+  --ui-radius-lg: 6px;
+  --ui-radius-xl: 8px;
+  --ui-radius-full: 9999px;
+
+  /* ============================================
+   * SHADOWS / ELEVATION
+   * ============================================ */
+  --ui-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --ui-shadow-md: 0 4px 8px rgba(0, 0, 0, 0.4);
+  --ui-shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.5);
+  --ui-shadow-xl: 0 16px 48px rgba(0, 0, 0, 0.6);
+
+  /* ============================================
+   * TRANSITIONS / ANIMATIONS
+   * ============================================ */
+  --ui-duration-fast: 100ms;
+  --ui-duration-normal: 150ms;
+  --ui-duration-slow: 300ms;
+  --ui-duration-slower: 500ms;
+
+  --ui-ease-default: cubic-bezier(0.4, 0, 0.2, 1);
+  --ui-ease-in: cubic-bezier(0.4, 0, 1, 1);
+  --ui-ease-out: cubic-bezier(0, 0, 0.2, 1);
+  --ui-ease-bounce: cubic-bezier(0.68, -0.55, 0.265, 1.55);
+
+  --ui-transition-colors: color var(--ui-duration-fast) var(--ui-ease-default),
+    background-color var(--ui-duration-fast) var(--ui-ease-default),
+    border-color var(--ui-duration-fast) var(--ui-ease-default);
+  --ui-transition-transform: transform var(--ui-duration-normal) var(--ui-ease-default);
+  --ui-transition-opacity: opacity var(--ui-duration-normal) var(--ui-ease-default);
+  --ui-transition-all: all var(--ui-duration-normal) var(--ui-ease-default);
+
+  /* ============================================
+   * Z-INDEX SCALE
+   * ============================================ */
+  --ui-z-base: 0;
+  --ui-z-dropdown: 100;
+  --ui-z-sticky: 200;
+  --ui-z-overlay: 300;
+  --ui-z-modal: 400;
+  --ui-z-popover: 500;
+  --ui-z-tooltip: 600;
+  --ui-z-toast: 700;
+
+  /* ============================================
+   * SIZES
+   * ============================================ */
+  --ui-size-icon-sm: 12px;
+  --ui-size-icon-md: 14px;
+  --ui-size-icon-lg: 16px;
+  --ui-size-icon-xl: 20px;
+
+  --ui-size-input-sm: 24px;
+  --ui-size-input-md: 28px;
+  --ui-size-input-lg: 32px;
+
+  /* ============================================
+   * COMPONENT-SPECIFIC TOKENS
+   * ============================================ */
+
+  /* Button */
+  --ui-btn-padding-x: var(--ui-space-3);
+  --ui-btn-padding-y: var(--ui-space-1);
+  --ui-btn-radius: var(--ui-radius-sm);
+  --ui-btn-font-size: var(--ui-text-sm);
+
+  /* Input */
+  --ui-input-padding-x: var(--ui-space-2);
+  --ui-input-padding-y: var(--ui-space-1);
+  --ui-input-radius: var(--ui-radius-sm);
+
+  /* Card */
+  --ui-card-padding: var(--ui-space-4);
+  --ui-card-radius: var(--ui-radius-md);
+
+  /* Modal */
+  --ui-modal-width-sm: 320px;
+  --ui-modal-width-md: 480px;
+  --ui-modal-width-lg: 640px;
+}
+
+/* ============================================
+ * KEYFRAME ANIMATIONS
+ * ============================================ */
+
+@keyframes ui-fade-in {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes ui-fade-out {
+  from {
+    opacity: 1;
+  }
+
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes ui-slide-up {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes ui-slide-down {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes ui-scale-in {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes ui-spin {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes ui-pulse {
+
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.5;
+  }
+}
+
+/* ============================================
+ * ANIMATION UTILITY CLASSES
+ * ============================================ */
+
+.ui-animate-fade-in {
+  animation: ui-fade-in var(--ui-duration-normal) var(--ui-ease-out);
+}
+
+.ui-animate-slide-up {
+  animation: ui-slide-up var(--ui-duration-normal) var(--ui-ease-out);
+}
+
+.ui-animate-slide-down {
+  animation: ui-slide-down var(--ui-duration-normal) var(--ui-ease-out);
+}
+
+.ui-animate-scale-in {
+  animation: ui-scale-in var(--ui-duration-normal) var(--ui-ease-out);
+}
+
+.ui-animate-spin {
+  animation: ui-spin 1s linear infinite;
+}
+
+.ui-animate-pulse {
+  animation: ui-pulse 2s var(--ui-ease-default) infinite;
+}
+
+/* ============================================
+ * UTILITY CLASSES
+ * ============================================ */
+
+/* Text utilities */
+.ui-text-muted {
+  color: var(--ui-text-muted);
+}
+
+.ui-text-bright {
+  color: var(--ui-text-bright);
+}
+
+.ui-text-primary {
+  color: var(--ui-primary);
+}
+
+.ui-text-error {
+  color: var(--ui-error);
+}
+
+.ui-text-success {
+  color: var(--ui-success);
+}
+
+.ui-text-sm {
+  font-size: var(--ui-text-sm);
+}
+
+.ui-text-xs {
+  font-size: var(--ui-text-xs);
+}
+
+/* Panel - basic content container */
+.ui-panel {
+  padding: var(--ui-space-4);
+}
+
+/* Alert boxes */
+.ui-alert {
+  display: flex;
+  align-items: center;
+  gap: var(--ui-space-2);
+  padding: var(--ui-space-3) var(--ui-space-4);
+  border-radius: var(--ui-radius-md);
+  margin-bottom: var(--ui-space-4);
+}
+
+.ui-alert--error {
+  background-color: var(--ui-error-bg);
+  border: 1px solid var(--ui-error);
+  color: var(--ui-error);
+}
+
+.ui-alert--success {
+  background-color: var(--ui-success-bg);
+  border: 1px solid var(--ui-success);
+  color: var(--ui-success);
+}
+
+.ui-alert--warning {
+  background-color: var(--ui-warning-bg);
+  border: 1px solid var(--ui-warning);
+  color: var(--ui-warning);
+}
+
+.ui-alert--info {
+  background-color: var(--ui-info-bg);
+  border: 1px solid var(--ui-info);
+  color: var(--ui-info);
+}
+
+/* Dropzone for file upload */
+.ui-dropzone {
+  border: 2px dashed var(--ui-border);
+  border-radius: var(--ui-radius-lg);
+  padding: var(--ui-space-8) var(--ui-space-4);
+  text-align: center;
+  cursor: pointer;
+  transition: var(--ui-transition-all);
+}
+
+.ui-dropzone:hover,
+.ui-dropzone--active {
+  border-color: var(--ui-primary);
+  background-color: var(--ui-primary-subtle);
+}
+
+/* Spinner */
+.ui-spinner {
+  width: 24px;
+  height: 24px;
+  border: 2px solid var(--ui-border);
+  border-top-color: var(--ui-primary);
+  border-radius: 50%;
+  animation: ui-spin 0.8s linear infinite;
+}
+
+.ui-spinner--sm {
+  width: 16px;
+  height: 16px;
+}
+
+.ui-spinner--lg {
+  width: 32px;
+  height: 32px;
+}
+
+/* Tag list for file assets */
+.ui-tag-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ui-space-2);
+  padding: var(--ui-space-2);
+  background-color: var(--ui-bg-surface);
+  border: 1px solid var(--ui-border);
+  border-radius: var(--ui-radius-sm);
+  min-height: 48px;
+}
+
+.ui-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ui-space-1);
+  padding: var(--ui-space-1) var(--ui-space-2);
+  background-color: var(--ui-bg-base);
+  border: 1px solid var(--ui-border);
+  border-radius: var(--ui-radius-sm);
+  font-size: var(--ui-text-sm);
+}
+
+.ui-tag button {
+  display: flex;
+  align-items: center;
+  padding: 2px;
+  color: var(--ui-text-muted);
+  background: none;
+  border: none;
+  cursor: pointer;
+  transition: var(--ui-transition-colors);
+}
+
+.ui-tag button:hover {
+  color: var(--ui-error);
+}
+
+/* Nested card style */
+.ui-card--nested {
+  background-color: var(--ui-bg-surface);
+  padding: var(--ui-space-3);
+  margin-bottom: var(--ui-space-3);
+}
+
+.ui-card--subtle {
+  background-color: transparent;
+  border: 1px solid var(--ui-border-subtle);
+}
+
+/* HStack/VStack utilities */
+.ui-hstack {
+  display: flex;
+  align-items: center;
+}
+
+.ui-vstack {
+  display: flex;
+  flex-direction: column;
+}

@@ -1,0 +1,28 @@
+/* Grid Component Styles */
+
+.ui-grid {
+    width: 100%;
+}
+
+/* InputGrid - Label/Input pair layout */
+.ui-input-grid {
+    display: grid;
+    grid-template-columns: 150px 1fr;
+    gap: var(--ui-space-2);
+    align-items: center;
+    margin-bottom: var(--ui-space-2);
+}
+
+.ui-input-grid>label {
+    text-align: right;
+    margin-bottom: 0;
+    color: var(--ui-text-muted);
+    font-size: var(--ui-text-sm);
+}
+
+/* Auto-layout grid for varied content */
+.ui-auto-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: var(--ui-space-4);
+}

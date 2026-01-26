@@ -1,0 +1,87 @@
+/* AutocompleteInput Component Styles */
+
+.ui-autocomplete {
+    position: relative;
+    width: 100%;
+}
+
+.ui-autocomplete__input {
+    width: 100%;
+    padding: var(--ui-input-padding-y) var(--ui-input-padding-x);
+    font-size: var(--ui-text-sm);
+    font-family: var(--ui-font-mono);
+    color: var(--ui-text);
+    background-color: var(--ui-bg-input);
+    border: 1px solid var(--ui-border);
+    border-radius: var(--ui-input-radius);
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.ui-autocomplete__input:focus {
+    outline: none;
+    border-color: var(--ui-primary);
+    box-shadow: 0 0 0 2px var(--ui-primary-subtle);
+}
+
+.ui-autocomplete__input::placeholder {
+    color: var(--ui-text-muted);
+    opacity: 0.6;
+}
+
+.ui-autocomplete--error .ui-autocomplete__input {
+    border-color: var(--ui-error);
+}
+
+.ui-autocomplete--error .ui-autocomplete__input:focus {
+    box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.2);
+}
+
+.ui-autocomplete--disabled .ui-autocomplete__input {
+    opacity: 0.5;
+    cursor: not-allowed;
+    background-color: var(--ui-bg-hover);
+}
+
+/* Dropdown */
+.ui-autocomplete__dropdown {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    z-index: var(--ui-z-dropdown);
+    margin-top: 4px;
+    padding: 4px 0;
+    background-color: var(--ui-bg-elevated);
+    border: 1px solid var(--ui-border);
+    border-radius: var(--ui-radius-sm);
+    box-shadow: var(--ui-shadow-lg);
+    max-height: 240px;
+    overflow-y: auto;
+    list-style: none;
+}
+
+.ui-autocomplete__option {
+    padding: 8px 12px;
+    font-size: var(--ui-text-sm);
+    font-family: var(--ui-font-mono);
+    color: var(--ui-text);
+    cursor: pointer;
+    transition: background-color 0.1s ease;
+}
+
+.ui-autocomplete__option:hover,
+.ui-autocomplete__option--highlighted {
+    background-color: var(--ui-bg-hover);
+}
+
+.ui-autocomplete__option--highlighted {
+    color: var(--ui-text-bright);
+}
+
+/* Error message */
+.ui-autocomplete__error {
+    display: block;
+    margin-top: 4px;
+    font-size: var(--ui-text-xs);
+    color: var(--ui-error);
+}
