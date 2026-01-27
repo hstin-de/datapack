@@ -723,6 +723,7 @@ export default function App() {
   const [isExporting, setIsExporting] = useState(false);
   const fileInputRef = useRef(null);
   const iconInputRef = useRef(null);
+  const passthroughInputRef = useRef(null);
 
   const layerNames = Object.keys(layers);
   const currentLayer = layers[activeLayer] || createEmptyLayer();
@@ -1128,6 +1129,33 @@ export default function App() {
     onChange: (data) => setItems(type, (prev) => updateItem(prev, getSelectedIndex(type), { data })),
     onIdChange: (id) => setItems(type, (prev) => updateItem(prev, getSelectedIndex(type), { id: fromDisplayId(id) }))
   });
+
+  const handleAddPassthrough = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      const data = await file.arrayBuffer();
+      const defaultPath = file.name;
+      const path = prompt('Enter path for file (e.g. assets/minecraft/textures/item/diamond.png):', defaultPath);
+      if (path) {
+        setLayers((prev) => {
+          const layer = prev[activeLayer] || createEmptyLayer();
+          const oldPt = layer._passthrough || [];
+          return {
+            ...prev,
+            [activeLayer]: {
+              ...layer,
+              _passthrough: [...oldPt, { path, data }]
+            }
+          };
+        });
+      }
+    } catch (error) {
+      console.error('Failed to read file', error);
+      alert('Failed to read file');
+    }
+    e.target.value = '';
+  };
 
   return (
     <div className="app">
@@ -1751,11 +1779,26 @@ export default function App() {
               <p style={{ color: 'var(--ui-text-muted)', fontSize: '13px', marginBottom: '12px' }}>
                 Files that don't match any known datapack category. These are preserved as-is during import/export.
               </p>
+              <div style={{ marginBottom: '16px' }}>
+                <input
+                  ref={passthroughInputRef}
+                  type="file"
+                  style={{ display: 'none' }}
+                  onChange={handleAddPassthrough}
+                />
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  icon={<Plus size={14} />}
+                  onClick={() => passthroughInputRef.current?.click()}
+                >
+                  Add File to {activeLayer === 'data' ? 'data/' : `${activeLayer}/`}
+                </Button>
+              </div>
 
               {(() => {
-                const layerPt = currentLayer._passthrough || [];
-                const allPt = [...rootPassthrough, ...layerPt];
-                if (allPt.length === 0) {
+                const allPtLen = rootPassthrough.length + layerNames.reduce((acc, name) => acc + (layers[name]._passthrough?.length || 0), 0);
+                if (allPtLen === 0) {
                   return <p style={{ color: 'var(--ui-text-muted)', fontStyle: 'italic' }}>No other files.</p>;
                 }
                 return (
@@ -1771,17 +1814,38 @@ export default function App() {
                         ))}
                       </>
                     )}
-                    {layerPt.length > 0 && (
-                      <>
-                        <div style={{ fontSize: '12px', fontWeight: 600, color: 'var(--ui-text-muted)', padding: '6px 0 2px' }}>Layer: {activeLayer}/</div>
-                        {layerPt.map((pt, i) => (
-                          <div key={`layer-${i}`} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '4px 8px', borderRadius: '4px', background: 'var(--ui-bg-subtle, #f5f5f5)', fontSize: '13px', fontFamily: 'monospace' }}>
-                            <span>{pt.path}</span>
-                            <span style={{ color: 'var(--ui-text-muted)', fontSize: '11px', marginLeft: '12px', whiteSpace: 'nowrap' }}>{pt.data.byteLength != null ? `${(pt.data.byteLength / 1024).toFixed(1)} KB` : ''}</span>
-                          </div>
-                        ))}
-                      </>
-                    )}
+                    {layerNames.map((layerName) => {
+                      const layerFiles = layers[layerName]._passthrough || [];
+                      if (layerFiles.length === 0) return null;
+                      return (
+                        <div key={layerName} style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                          <div style={{ fontSize: '12px', fontWeight: 600, color: 'var(--ui-text-muted)', padding: '6px 0 2px' }}>Layer: {layerName === 'data' ? 'data/' : `${layerName}/`}</div>
+                          {layerFiles.map((pt, i) => (
+                            <div key={`layer-${layerName}-${i}`} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '4px 8px', borderRadius: '4px', background: 'var(--ui-bg-subtle, #f5f5f5)', fontSize: '13px', fontFamily: 'monospace' }}>
+                              <span>{pt.path}</span>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                <span style={{ color: 'var(--ui-text-muted)', fontSize: '11px', whiteSpace: 'nowrap' }}>{pt.data.byteLength != null ? `${(pt.data.byteLength / 1024).toFixed(1)} KB` : ''}</span>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  icon={<X size={14} />}
+                                  onClick={() => {
+                                    if (confirm(`Remove file "${pt.path}"?`)) {
+                                      setLayers(prev => {
+                                        const l = prev[layerName];
+                                        if (!l) return prev;
+                                        const newPt = l._passthrough.filter((_, idx) => idx !== i);
+                                        return { ...prev, [layerName]: { ...l, _passthrough: newPt } };
+                                      });
+                                    }
+                                  }}
+                                />
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      );
+                    })}
                   </div>
                 );
               })()}
@@ -1789,6 +1853,6 @@ export default function App() {
           </TabPanel>
         </section>
       </main>
-    </div>
+    </div >
   );
 }
