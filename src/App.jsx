@@ -1,6 +1,6 @@
-import React, { useMemo, useRef, useState } from 'react';
+import React, { useCallback, useMemo, useRef, useState } from 'react';
 import JSZip from 'jszip';
-import { Download, Upload } from 'lucide-react';
+import { Download, Layers, Plus, Upload, X } from 'lucide-react';
 import { BiomeEditor } from './editors/BiomeEditor.jsx';
 import { ConfiguredFeatureEditor } from './editors/ConfiguredFeatureEditor.jsx';
 import { PlacedFeatureEditor } from './editors/PlacedFeatureEditor.jsx';
@@ -272,11 +272,20 @@ const WORLDGEN_TYPES = [
   'flat_level_generator_preset'
 ];
 
-const DATAPACK_FILE_PATTERN = /^data\/([^/]+)\/worldgen\/([^/]+)\/(.+)\.json$/;
-const DATAPACK_TAG_PATTERN = /^data\/([^/]+)\/tags\/(.+)\.json$/;
+const BASE_DATA_PATTERN = /^data\/([^/]+)\/worldgen\/([^/]+)\/(.+)\.json$/;
+const BASE_TAG_PATTERN = /^data\/([^/]+)\/tags\/(.+)\.json$/;
+const OVERLAY_DATA_PATTERN = /^([^/]+)\/data\/([^/]+)\/worldgen\/([^/]+)\/(.+)\.json$/;
+const OVERLAY_TAG_PATTERN = /^([^/]+)\/data\/([^/]+)\/tags\/(.+)\.json$/;
 
-const createEmptyImport = () =>
-  Object.fromEntries(WORLDGEN_TYPES.map((type) => [type, []]));
+const createEmptyLayer = () => ({
+  ...Object.fromEntries(WORLDGEN_TYPES.map((type) => [type, []])),
+  tag: []
+});
+
+const createEmptySelections = () => ({
+  ...Object.fromEntries(WORLDGEN_TYPES.map((type) => [type, null])),
+  tag: null
+});
 
 const sanitizeFilename = (value) => value.replace(/[^a-z0-9._-]+/gi, '_');
 
@@ -315,59 +324,101 @@ const extractPackMeta = async (zip) => {
 
 const parseDatapackZip = async (file) => {
   const zip = await JSZip.loadAsync(file);
-  const entriesByType = createEmptyImport();
+  const layersByName = { data: createEmptyLayer() };
   const errors = [];
   const namespaceCounts = new Map();
-  const tagEntries = [];
+
+  const ensureLayer = (layerName) => {
+    if (!layersByName[layerName]) {
+      layersByName[layerName] = createEmptyLayer();
+    }
+  };
 
   await Promise.all(
     Object.values(zip.files).map(async (zipEntry) => {
       if (zipEntry.dir) return;
       if (zipEntry.name === 'pack.mcmeta') return;
-      const tagMatch = zipEntry.name.match(DATAPACK_TAG_PATTERN);
-      if (tagMatch) {
-        const [, namespace, path] = tagMatch;
+
+      let layerName = 'data';
+      let namespace, type, path, isTag = false;
+
+      // Try base tag pattern
+      const baseTagMatch = zipEntry.name.match(BASE_TAG_PATTERN);
+      if (baseTagMatch) {
+        [, namespace, path] = baseTagMatch;
+        isTag = true;
+      }
+
+      // Try overlay tag pattern
+      if (!isTag) {
+        const overlayTagMatch = zipEntry.name.match(OVERLAY_TAG_PATTERN);
+        if (overlayTagMatch) {
+          [, layerName, namespace, path] = overlayTagMatch;
+          isTag = true;
+        }
+      }
+
+      if (isTag) {
+        ensureLayer(layerName);
         namespaceCounts.set(namespace, (namespaceCounts.get(namespace) || 0) + 1);
         try {
           const contents = await zipEntry.async('string');
           const data = JSON.parse(contents);
-          tagEntries.push({ id: `${namespace}:${path}`, data });
+          layersByName[layerName].tag.push({ id: `${namespace}:${path}`, data });
         } catch (error) {
           errors.push(`${zipEntry.name}: ${error?.message || String(error)}`);
         }
         return;
       }
-      const match = zipEntry.name.match(DATAPACK_FILE_PATTERN);
-      if (match) {
-        const [, namespace, type, path] = match;
-        if (entriesByType[type]) {
-          namespaceCounts.set(namespace, (namespaceCounts.get(namespace) || 0) + 1);
-          try {
-            const contents = await zipEntry.async('string');
-            const data = JSON.parse(contents);
-            entriesByType[type].push({ id: `${namespace}:${path}`, data });
-            return;
-          } catch (error) {
-            errors.push(`${zipEntry.name}: ${error?.message || String(error)}`);
-            return;
-          }
+
+      // Try base data pattern
+      const baseMatch = zipEntry.name.match(BASE_DATA_PATTERN);
+      if (baseMatch) {
+        [, namespace, type, path] = baseMatch;
+        layerName = 'data';
+      } else {
+        // Try overlay data pattern
+        const overlayMatch = zipEntry.name.match(OVERLAY_DATA_PATTERN);
+        if (overlayMatch) {
+          [, layerName, namespace, type, path] = overlayMatch;
+        } else {
+          return;
         }
+      }
+
+      ensureLayer(layerName);
+      if (!layersByName[layerName][type]) return;
+
+      namespaceCounts.set(namespace, (namespaceCounts.get(namespace) || 0) + 1);
+      try {
+        const contents = await zipEntry.async('string');
+        const data = JSON.parse(contents);
+        layersByName[layerName][type].push({ id: `${namespace}:${path}`, data });
+      } catch (error) {
+        errors.push(`${zipEntry.name}: ${error?.message || String(error)}`);
       }
     })
   );
 
-  WORLDGEN_TYPES.forEach((type) => {
-    entriesByType[type].sort((a, b) => a.id.localeCompare(b.id));
-  });
+  // Sort all entries in all layers
+  for (const layer of Object.values(layersByName)) {
+    for (const type of [...WORLDGEN_TYPES, 'tag']) {
+      layer[type].sort((a, b) => a.id.localeCompare(b.id));
+    }
+  }
 
-  tagEntries.sort((a, b) => a.id.localeCompare(b.id));
-  const totalWorldgen = WORLDGEN_TYPES.reduce((sum, type) => sum + entriesByType[type].length, 0);
-  const total = totalWorldgen + tagEntries.length;
+  let total = 0;
+  for (const layer of Object.values(layersByName)) {
+    for (const type of [...WORLDGEN_TYPES, 'tag']) {
+      total += layer[type].length;
+    }
+  }
+
   const packMeta = await extractPackMeta(zip);
   const namespaces = Array.from(namespaceCounts.entries())
     .sort((a, b) => b[1] - a[1])
     .map(([namespace]) => namespace);
-  return { entriesByType, total, errors, namespaces, packMeta, tagEntries };
+  return { layersByName, total, errors, namespaces, packMeta };
 };
 
 const makeUniqueId = (base, list) => {
@@ -392,53 +443,11 @@ const updateItem = (list, index, patch) =>
 
 export default function App() {
   const [activeEditor, setActiveEditor] = useState('biome');
+  const [layers, setLayers] = useState({ data: createEmptyLayer() });
+  const [activeLayer, setActiveLayer] = useState('data');
+  const [selections, setSelections] = useState({ data: createEmptySelections() });
 
-  const [biomes, setBiomes] = useState([]);
-  const [selectedBiome, setSelectedBiome] = useState(null);
-
-  const [configuredFeatures, setConfiguredFeatures] = useState([]);
-  const [selectedConfiguredFeature, setSelectedConfiguredFeature] = useState(null);
-
-  const [placedFeatures, setPlacedFeatures] = useState([]);
-  const [selectedPlacedFeature, setSelectedPlacedFeature] = useState(null);
-
-  const [configuredCarvers, setConfiguredCarvers] = useState([]);
-  const [selectedConfiguredCarver, setSelectedConfiguredCarver] = useState(null);
-
-  const [structures, setStructures] = useState([]);
-  const [selectedStructure, setSelectedStructure] = useState(null);
-
-  const [structureSets, setStructureSets] = useState([]);
-  const [selectedStructureSet, setSelectedStructureSet] = useState(null);
-
-  const [templatePools, setTemplatePools] = useState([]);
-  const [selectedTemplatePool, setSelectedTemplatePool] = useState(null);
-
-  const [processorLists, setProcessorLists] = useState([]);
-  const [selectedProcessorList, setSelectedProcessorList] = useState(null);
-
-  const [noiseSettingsList, setNoiseSettingsList] = useState([]);
-  const [selectedNoiseSettings, setSelectedNoiseSettings] = useState(null);
-
-  const [densityFunctions, setDensityFunctions] = useState([]);
-  const [selectedDensityFunction, setSelectedDensityFunction] = useState(null);
-
-  const [noises, setNoises] = useState([]);
-  const [selectedNoise, setSelectedNoise] = useState(null);
-
-  const [dimensions, setDimensions] = useState([]);
-  const [selectedDimension, setSelectedDimension] = useState(null);
-
-  const [worldPresets, setWorldPresets] = useState([]);
-  const [selectedWorldPreset, setSelectedWorldPreset] = useState(null);
-
-  const [flatPresets, setFlatPresets] = useState([]);
-  const [selectedFlatPreset, setSelectedFlatPreset] = useState(null);
-  const [tags, setTags] = useState([]);
-  const [selectedTag, setSelectedTag] = useState(null);
-  const [packMeta, setPackMeta] = useState({
-    namespace: ''
-  });
+  const [packMeta, setPackMeta] = useState({ namespace: '' });
   const [packMcmeta, setPackMcmeta] = useState(createDefaultPackMcmeta());
   const [importStatus, setImportStatus] = useState(null);
   const [isImporting, setIsImporting] = useState(false);
@@ -446,39 +455,57 @@ export default function App() {
   const [isExporting, setIsExporting] = useState(false);
   const fileInputRef = useRef(null);
 
+  const layerNames = Object.keys(layers);
+  const currentLayer = layers[activeLayer] || createEmptyLayer();
+  const currentSelections = selections[activeLayer] || createEmptySelections();
+
+  const getItems = useCallback((type) => currentLayer[type] || [], [currentLayer]);
+  const getSelectedIndex = useCallback((type) => currentSelections[type], [currentSelections]);
+
+  const setItems = useCallback((type, updater) => {
+    setLayers((prev) => {
+      const layer = prev[activeLayer] || createEmptyLayer();
+      const oldItems = layer[type] || [];
+      const newItems = typeof updater === 'function' ? updater(oldItems) : updater;
+      return { ...prev, [activeLayer]: { ...layer, [type]: newItems } };
+    });
+  }, [activeLayer]);
+
+  const setSelectedIndex = useCallback((type, index) => {
+    setSelections((prev) => ({
+      ...prev,
+      [activeLayer]: { ...(prev[activeLayer] || createEmptySelections()), [type]: index }
+    }));
+  }, [activeLayer]);
+
+  const addLayer = (name) => {
+    if (layers[name]) return;
+    setLayers((prev) => ({ ...prev, [name]: createEmptyLayer() }));
+    setSelections((prev) => ({ ...prev, [name]: createEmptySelections() }));
+  };
+
+  const removeLayer = (name) => {
+    if (name === 'data') return;
+    setLayers((prev) => {
+      const next = { ...prev };
+      delete next[name];
+      return next;
+    });
+    setSelections((prev) => {
+      const next = { ...prev };
+      delete next[name];
+      return next;
+    });
+    if (activeLayer === name) setActiveLayer('data');
+  };
+
+  const editorTypeForActiveEditor = activeEditor === 'tag' ? 'tag' : activeEditor;
+  const activeItems = getItems(editorTypeForActiveEditor);
+  const activeSelectedIndex = getSelectedIndex(editorTypeForActiveEditor);
+
   const getActiveEntry = () => {
-    switch (activeEditor) {
-      case 'configured_feature':
-        return configuredFeatures[selectedConfiguredFeature] || null;
-      case 'placed_feature':
-        return placedFeatures[selectedPlacedFeature] || null;
-      case 'configured_carver':
-        return configuredCarvers[selectedConfiguredCarver] || null;
-      case 'structure':
-        return structures[selectedStructure] || null;
-      case 'structure_set':
-        return structureSets[selectedStructureSet] || null;
-      case 'template_pool':
-        return templatePools[selectedTemplatePool] || null;
-      case 'processor_list':
-        return processorLists[selectedProcessorList] || null;
-      case 'noise_settings':
-        return noiseSettingsList[selectedNoiseSettings] || null;
-      case 'density_function':
-        return densityFunctions[selectedDensityFunction] || null;
-      case 'noise':
-        return noises[selectedNoise] || null;
-      case 'dimension':
-        return dimensions[selectedDimension] || null;
-      case 'world_preset':
-        return worldPresets[selectedWorldPreset] || null;
-      case 'flat_level_generator_preset':
-        return flatPresets[selectedFlatPreset] || null;
-      case 'tag':
-        return tags[selectedTag] || null;
-      default:
-        return biomes[selectedBiome] || null;
-    }
+    if (activeEditor === 'metadata') return null;
+    return activeItems[activeSelectedIndex] || null;
   };
 
   const activeEntry = getActiveEntry();
@@ -527,69 +554,70 @@ export default function App() {
 
   const renderCollection = ({
     title,
-    items,
-    selectedIndex,
-    setSelectedIndex,
-    setItems,
+    type,
     defaultId,
     defaultData,
     renderEditor
-  }) => (
-    <MasterDetailLayout
-      title={title}
-      items={items}
-      selectedIndex={selectedIndex}
-      onSelect={setSelectedIndex}
-      onAdd={() => {
-        setItems((prev) => {
-          const nextId = makeUniqueId(defaultId, prev);
-          const next = [...prev, { id: nextId, data: defaultData() }];
-          setSelectedIndex(next.length - 1);
-          return next;
-        });
-      }}
-      onRemove={(index) => {
-        setItems((prev) => {
-          const next = prev.filter((_, i) => i !== index);
-          if (next.length === 0) {
-            setSelectedIndex(null);
-          } else {
-            setSelectedIndex(Math.min(index, next.length - 1));
-          }
-          return next;
-        });
-      }}
-      renderItem={(item) => (item.id ? toDisplayId(item.id) : 'Unnamed')}
-    >
-      <div className="editor-stack">
-        <details className="validation-card">
-          <summary className="validation-card__summary">
-            <div className="validation-card__left">
-              <span className="validation-card__title">Validation</span>
-              <span className="validation-card__context">{validationContextLabel}</span>
-              <Badge variant={validation.valid ? 'success' : 'error'}>{validationStatusLabel}</Badge>
+  }) => {
+    const items = getItems(type);
+    const selectedIndex = getSelectedIndex(type);
+    return (
+      <MasterDetailLayout
+        title={title}
+        items={items}
+        selectedIndex={selectedIndex}
+        onSelect={(idx) => setSelectedIndex(type, idx)}
+        onAdd={() => {
+          setItems(type, (prev) => {
+            const nextId = makeUniqueId(defaultId, prev);
+            const next = [...prev, { id: nextId, data: defaultData() }];
+            setSelectedIndex(type, next.length - 1);
+            return next;
+          });
+        }}
+        onRemove={(index) => {
+          setItems(type, (prev) => {
+            const next = prev.filter((_, i) => i !== index);
+            if (next.length === 0) {
+              setSelectedIndex(type, null);
+            } else {
+              setSelectedIndex(type, Math.min(index, next.length - 1));
+            }
+            return next;
+          });
+        }}
+        renderItem={(item) => (item.id ? toDisplayId(item.id) : 'Unnamed')}
+      >
+        <div className="editor-stack">
+          <details className="validation-card">
+            <summary className="validation-card__summary">
+              <div className="validation-card__left">
+                <span className="validation-card__title">Validation</span>
+                <span className="validation-card__context">{validationContextLabel}</span>
+                <Badge variant={validation.valid ? 'success' : 'error'}>{validationStatusLabel}</Badge>
+              </div>
+              <span className="validation-card__action">{validationActionLabel}</span>
+            </summary>
+            <div className="validation-card__body">
+              {validation.valid ? (
+                <p className="validation-card__empty">No validation errors detected.</p>
+              ) : (
+                <ul className="validation-card__list">
+                  {validationErrors.map((err, index) => (
+                    <li key={`${err.path}-${index}`} className="validation-card__item">
+                      <span className="validation-card__path">{err.path || '/'}</span>
+                      <span className="validation-card__message">{err.message}</span>
+                    </li>
+                  ))}
+                </ul>
+              )}
             </div>
-            <span className="validation-card__action">{validationActionLabel}</span>
-          </summary>
-          <div className="validation-card__body">
-            {validation.valid ? (
-              <p className="validation-card__empty">No validation errors detected.</p>
-            ) : (
-              <ul className="validation-card__list">
-                {validationErrors.map((err, index) => (
-                  <li key={`${err.path}-${index}`} className="validation-card__item">
-                    <span className="validation-card__path">{err.path || '/'}</span>
-                    <span className="validation-card__message">{err.message}</span>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
-        </details>
-        {items[selectedIndex] && renderEditor(items[selectedIndex], selectedIndex)}
-      </div>
-    </MasterDetailLayout>
-  );
+          </details>
+          {items[selectedIndex] && renderEditor(items[selectedIndex], selectedIndex)}
+        </div>
+      </MasterDetailLayout>
+    );
+  };
 
   const activeNamespace = packMeta.namespace.trim() || 'custom';
   const makeDefaultId = (path) => path;
@@ -606,29 +634,6 @@ export default function App() {
     return path || value;
   };
 
-  const applyImportedCollections = (entriesByType, tagEntries) => {
-    const applyCollection = (entries, setItems, setSelected) => {
-      setItems(entries);
-      setSelected(entries.length > 0 ? 0 : null);
-    };
-
-    applyCollection(entriesByType.biome, setBiomes, setSelectedBiome);
-    applyCollection(entriesByType.configured_feature, setConfiguredFeatures, setSelectedConfiguredFeature);
-    applyCollection(entriesByType.placed_feature, setPlacedFeatures, setSelectedPlacedFeature);
-    applyCollection(entriesByType.configured_carver, setConfiguredCarvers, setSelectedConfiguredCarver);
-    applyCollection(entriesByType.structure, setStructures, setSelectedStructure);
-    applyCollection(entriesByType.structure_set, setStructureSets, setSelectedStructureSet);
-    applyCollection(entriesByType.template_pool, setTemplatePools, setSelectedTemplatePool);
-    applyCollection(entriesByType.processor_list, setProcessorLists, setSelectedProcessorList);
-    applyCollection(entriesByType.noise_settings, setNoiseSettingsList, setSelectedNoiseSettings);
-    applyCollection(entriesByType.density_function, setDensityFunctions, setSelectedDensityFunction);
-    applyCollection(entriesByType.noise, setNoises, setSelectedNoise);
-    applyCollection(entriesByType.dimension, setDimensions, setSelectedDimension);
-    applyCollection(entriesByType.world_preset, setWorldPresets, setSelectedWorldPreset);
-    applyCollection(entriesByType.flat_level_generator_preset, setFlatPresets, setSelectedFlatPreset);
-    applyCollection(tagEntries, setTags, setSelectedTag);
-  };
-
   const handleDatapackImport = async (event) => {
     const file = event.target.files?.[0];
     if (!file) return;
@@ -637,14 +642,25 @@ export default function App() {
     setPackMcmeta(createDefaultPackMcmeta());
 
     try {
-      const { entriesByType, total, errors, namespaces, packMeta: importedMeta, tagEntries } =
+      const { layersByName, total, errors, namespaces, packMeta: importedMeta } =
         await parseDatapackZip(file);
       if (total === 0) {
         setImportStatus({ variant: 'error', message: 'No supported JSON files found in the zip.' });
         return;
       }
 
-      applyImportedCollections(entriesByType, tagEntries);
+      setLayers(layersByName);
+      const newSelections = {};
+      for (const [name, layer] of Object.entries(layersByName)) {
+        const sel = createEmptySelections();
+        for (const type of [...WORLDGEN_TYPES, 'tag']) {
+          sel[type] = layer[type].length > 0 ? 0 : null;
+        }
+        newSelections[name] = sel;
+      }
+      setSelections(newSelections);
+      setActiveLayer('data');
+
       setPackMeta((prev) => {
         const next = { ...prev };
         if (namespaces.length > 0) next.namespace = namespaces[0];
@@ -673,11 +689,10 @@ export default function App() {
       const zip = new JSZip();
       const warnings = [];
       const defaultNamespace = packMeta.namespace.trim() || 'custom';
-      const reservedPaths = new Set(['pack.mcmeta']);
 
       zip.file('pack.mcmeta', JSON.stringify(packMcmeta || createDefaultPackMcmeta(), null, 2));
 
-      const addEntries = (type, items) => {
+      const addEntries = (prefix, type, items) => {
         items.forEach((item) => {
           if (!item?.id) {
             warnings.push(`${type}: entry missing id`);
@@ -689,13 +704,12 @@ export default function App() {
             warnings.push(`${type}: invalid id "${item.id}"`);
             return;
           }
-          const filePath = `data/${namespace}/worldgen/${type}/${path}.json`;
-          reservedPaths.add(filePath);
+          const filePath = `${prefix}data/${namespace}/worldgen/${type}/${path}.json`;
           zip.file(filePath, JSON.stringify(item.data ?? {}, null, 2));
         });
       };
 
-      const addTags = (items) => {
+      const addTags = (prefix, items) => {
         items.forEach((item) => {
           if (!item?.id) {
             warnings.push('tag: entry missing id');
@@ -707,27 +721,18 @@ export default function App() {
             warnings.push(`tag: invalid id "${item.id}"`);
             return;
           }
-          const filePath = `data/${namespace}/tags/${path}.json`;
-          reservedPaths.add(filePath);
+          const filePath = `${prefix}data/${namespace}/tags/${path}.json`;
           zip.file(filePath, JSON.stringify(item.data ?? {}, null, 2));
         });
       };
 
-      addEntries('biome', biomes);
-      addEntries('configured_feature', configuredFeatures);
-      addEntries('placed_feature', placedFeatures);
-      addEntries('configured_carver', configuredCarvers);
-      addEntries('structure', structures);
-      addEntries('structure_set', structureSets);
-      addEntries('template_pool', templatePools);
-      addEntries('processor_list', processorLists);
-      addEntries('noise_settings', noiseSettingsList);
-      addEntries('density_function', densityFunctions);
-      addEntries('noise', noises);
-      addEntries('dimension', dimensions);
-      addEntries('world_preset', worldPresets);
-      addEntries('flat_level_generator_preset', flatPresets);
-      addTags(tags);
+      for (const [layerName, layer] of Object.entries(layers)) {
+        const prefix = layerName === 'data' ? '' : `${layerName}/`;
+        for (const type of WORLDGEN_TYPES) {
+          addEntries(prefix, type, layer[type] || []);
+        }
+        addTags(prefix, layer.tag || []);
+      }
 
       const blob = await zip.generateAsync({ type: 'blob' });
       const filename = sanitizeFilename(packMeta.namespace || 'datapack');
@@ -752,6 +757,51 @@ export default function App() {
       setIsExporting(false);
     }
   };
+
+  const handleAddOverlay = () => {
+    const name = prompt('Enter overlay directory name (e.g. overlay_39):');
+    if (!name || !name.trim()) return;
+    const trimmed = name.trim();
+    if (trimmed === 'data') return;
+    addLayer(trimmed);
+    setActiveLayer(trimmed);
+    // Auto-add overlay entry to pack.mcmeta if not present
+    const overlays = packMcmeta.overlays || {};
+    const entries = Array.isArray(overlays.entries) ? overlays.entries : [];
+    if (!entries.some((e) => e.directory === trimmed)) {
+      setPackMcmeta((prev) => ({
+        ...prev,
+        overlays: {
+          ...(prev.overlays || {}),
+          entries: [...entries, { directory: trimmed, formats: [] }]
+        }
+      }));
+    }
+  };
+
+  const handleRemoveLayer = (name) => {
+    if (name === 'data') return;
+    if (!confirm(`Remove overlay "${name}" and all its contents?`)) return;
+    removeLayer(name);
+  };
+
+  const handlePackMcmetaChange = useCallback((newMcmeta) => {
+    setPackMcmeta(newMcmeta);
+    // Sync overlay layers with mcmeta overlay entries
+    const overlayEntries = newMcmeta?.overlays?.entries || [];
+    const overlayDirs = new Set(overlayEntries.map((e) => e.directory).filter(Boolean));
+    // Add layers for new overlay entries
+    for (const dir of overlayDirs) {
+      if (!layers[dir]) {
+        addLayer(dir);
+      }
+    }
+  }, [layers]);
+
+  const makeEditorProps = (type) => ({
+    onChange: (data) => setItems(type, (prev) => updateItem(prev, getSelectedIndex(type), { data })),
+    onIdChange: (id) => setItems(type, (prev) => updateItem(prev, getSelectedIndex(type), { id: fromDisplayId(id) }))
+  });
 
   return (
     <div className="app">
@@ -788,6 +838,33 @@ export default function App() {
           </Button>
         </div>
       </header>
+
+      <div className="app__layer-bar">
+        <Layers size={14} className="app__layer-icon" />
+        {layerNames.map((name) => (
+          <button
+            key={name}
+            type="button"
+            className={`app__layer-tab ${activeLayer === name ? 'app__layer-tab--active' : ''}`}
+            onClick={() => setActiveLayer(name)}
+          >
+            <span>{name === 'data' ? 'data/' : `${name}/`}</span>
+            {name !== 'data' && (
+              <span
+                className="app__layer-tab-close"
+                onClick={(e) => { e.stopPropagation(); handleRemoveLayer(name); }}
+              >
+                <X size={12} />
+              </span>
+            )}
+          </button>
+        ))}
+        <button type="button" className="app__layer-add" onClick={handleAddOverlay}>
+          <Plus size={14} />
+          <span>Overlay</span>
+        </button>
+      </div>
+
       <main className="app__content">
         <aside className="app__sidebar">
           {editorGroups.map((group) => (
@@ -824,26 +901,23 @@ export default function App() {
                 </div>
               </Card>
 
-              <PackMcmetaEditor value={packMcmeta} onChange={setPackMcmeta} />
+              <PackMcmetaEditor value={packMcmeta} onChange={handlePackMcmetaChange} />
             </div>
           </TabPanel>
 
           <TabPanel id="biome" activeTab={activeEditor}>
             {renderCollection({
               title: 'Biomes',
-              items: biomes,
-              selectedIndex: selectedBiome,
-              setSelectedIndex: setSelectedBiome,
-              setItems: setBiomes,
+              type: 'biome',
               defaultId: makeDefaultId('custom_biome'),
               defaultData: createDefaultBiome,
               renderEditor: (entry, index) => (
                 <BiomeEditor
                   value={entry.data}
-                  onChange={(data) => setBiomes((prev) => updateItem(prev, index, { data }))}
+                  onChange={(data) => setItems('biome', (prev) => updateItem(prev, index, { data }))}
                   id={toDisplayId(entry.id)}
                   onIdChange={(id) =>
-                    setBiomes((prev) => updateItem(prev, index, { id: fromDisplayId(id) }))
+                    setItems('biome', (prev) => updateItem(prev, index, { id: fromDisplayId(id) }))
                   }
                 />
               )
@@ -853,19 +927,16 @@ export default function App() {
           <TabPanel id="configured_feature" activeTab={activeEditor}>
             {renderCollection({
               title: 'Configured Features',
-              items: configuredFeatures,
-              selectedIndex: selectedConfiguredFeature,
-              setSelectedIndex: setSelectedConfiguredFeature,
-              setItems: setConfiguredFeatures,
+              type: 'configured_feature',
               defaultId: makeDefaultId('custom_feature'),
               defaultData: createDefaultConfiguredFeature,
               renderEditor: (entry, index) => (
                 <ConfiguredFeatureEditor
                   value={entry.data}
-                  onChange={(data) => setConfiguredFeatures((prev) => updateItem(prev, index, { data }))}
+                  onChange={(data) => setItems('configured_feature', (prev) => updateItem(prev, index, { data }))}
                   id={toDisplayId(entry.id)}
                   onIdChange={(id) =>
-                    setConfiguredFeatures((prev) => updateItem(prev, index, { id: fromDisplayId(id) }))
+                    setItems('configured_feature', (prev) => updateItem(prev, index, { id: fromDisplayId(id) }))
                   }
                 />
               )
@@ -875,19 +946,16 @@ export default function App() {
           <TabPanel id="placed_feature" activeTab={activeEditor}>
             {renderCollection({
               title: 'Placed Features',
-              items: placedFeatures,
-              selectedIndex: selectedPlacedFeature,
-              setSelectedIndex: setSelectedPlacedFeature,
-              setItems: setPlacedFeatures,
+              type: 'placed_feature',
               defaultId: makeDefaultId('custom_placed'),
               defaultData: createDefaultPlacedFeature,
               renderEditor: (entry, index) => (
                 <PlacedFeatureEditor
                   value={entry.data}
-                  onChange={(data) => setPlacedFeatures((prev) => updateItem(prev, index, { data }))}
+                  onChange={(data) => setItems('placed_feature', (prev) => updateItem(prev, index, { data }))}
                   id={toDisplayId(entry.id)}
                   onIdChange={(id) =>
-                    setPlacedFeatures((prev) => updateItem(prev, index, { id: fromDisplayId(id) }))
+                    setItems('placed_feature', (prev) => updateItem(prev, index, { id: fromDisplayId(id) }))
                   }
                 />
               )
@@ -897,19 +965,16 @@ export default function App() {
           <TabPanel id="configured_carver" activeTab={activeEditor}>
             {renderCollection({
               title: 'Configured Carvers',
-              items: configuredCarvers,
-              selectedIndex: selectedConfiguredCarver,
-              setSelectedIndex: setSelectedConfiguredCarver,
-              setItems: setConfiguredCarvers,
+              type: 'configured_carver',
               defaultId: makeDefaultId('custom_carver'),
               defaultData: createDefaultConfiguredCarver,
               renderEditor: (entry, index) => (
                 <ConfiguredCarverEditor
                   value={entry.data}
-                  onChange={(data) => setConfiguredCarvers((prev) => updateItem(prev, index, { data }))}
+                  onChange={(data) => setItems('configured_carver', (prev) => updateItem(prev, index, { data }))}
                   id={toDisplayId(entry.id)}
                   onIdChange={(id) =>
-                    setConfiguredCarvers((prev) => updateItem(prev, index, { id: fromDisplayId(id) }))
+                    setItems('configured_carver', (prev) => updateItem(prev, index, { id: fromDisplayId(id) }))
                   }
                 />
               )
@@ -919,19 +984,16 @@ export default function App() {
           <TabPanel id="structure" activeTab={activeEditor}>
             {renderCollection({
               title: 'Structures',
-              items: structures,
-              selectedIndex: selectedStructure,
-              setSelectedIndex: setSelectedStructure,
-              setItems: setStructures,
+              type: 'structure',
               defaultId: makeDefaultId('custom_structure'),
               defaultData: createDefaultStructure,
               renderEditor: (entry, index) => (
                 <StructureEditor
                   value={entry.data}
-                  onChange={(data) => setStructures((prev) => updateItem(prev, index, { data }))}
+                  onChange={(data) => setItems('structure', (prev) => updateItem(prev, index, { data }))}
                   id={toDisplayId(entry.id)}
                   onIdChange={(id) =>
-                    setStructures((prev) => updateItem(prev, index, { id: fromDisplayId(id) }))
+                    setItems('structure', (prev) => updateItem(prev, index, { id: fromDisplayId(id) }))
                   }
                 />
               )
@@ -941,19 +1003,16 @@ export default function App() {
           <TabPanel id="structure_set" activeTab={activeEditor}>
             {renderCollection({
               title: 'Structure Sets',
-              items: structureSets,
-              selectedIndex: selectedStructureSet,
-              setSelectedIndex: setSelectedStructureSet,
-              setItems: setStructureSets,
+              type: 'structure_set',
               defaultId: makeDefaultId('custom_structure_set'),
               defaultData: createDefaultStructureSet,
               renderEditor: (entry, index) => (
                 <StructureSetEditor
                   value={entry.data}
-                  onChange={(data) => setStructureSets((prev) => updateItem(prev, index, { data }))}
+                  onChange={(data) => setItems('structure_set', (prev) => updateItem(prev, index, { data }))}
                   id={toDisplayId(entry.id)}
                   onIdChange={(id) =>
-                    setStructureSets((prev) => updateItem(prev, index, { id: fromDisplayId(id) }))
+                    setItems('structure_set', (prev) => updateItem(prev, index, { id: fromDisplayId(id) }))
                   }
                 />
               )
@@ -963,19 +1022,16 @@ export default function App() {
           <TabPanel id="template_pool" activeTab={activeEditor}>
             {renderCollection({
               title: 'Template Pools',
-              items: templatePools,
-              selectedIndex: selectedTemplatePool,
-              setSelectedIndex: setSelectedTemplatePool,
-              setItems: setTemplatePools,
+              type: 'template_pool',
               defaultId: makeDefaultId('custom_pool'),
               defaultData: createDefaultTemplatePool,
               renderEditor: (entry, index) => (
                 <TemplatePoolEditor
                   value={entry.data}
-                  onChange={(data) => setTemplatePools((prev) => updateItem(prev, index, { data }))}
+                  onChange={(data) => setItems('template_pool', (prev) => updateItem(prev, index, { data }))}
                   id={toDisplayId(entry.id)}
                   onIdChange={(id) =>
-                    setTemplatePools((prev) => updateItem(prev, index, { id: fromDisplayId(id) }))
+                    setItems('template_pool', (prev) => updateItem(prev, index, { id: fromDisplayId(id) }))
                   }
                 />
               )
@@ -985,19 +1041,16 @@ export default function App() {
           <TabPanel id="processor_list" activeTab={activeEditor}>
             {renderCollection({
               title: 'Processor Lists',
-              items: processorLists,
-              selectedIndex: selectedProcessorList,
-              setSelectedIndex: setSelectedProcessorList,
-              setItems: setProcessorLists,
+              type: 'processor_list',
               defaultId: makeDefaultId('custom_processor_list'),
               defaultData: createDefaultProcessorList,
               renderEditor: (entry, index) => (
                 <ProcessorListEditor
                   value={entry.data}
-                  onChange={(data) => setProcessorLists((prev) => updateItem(prev, index, { data }))}
+                  onChange={(data) => setItems('processor_list', (prev) => updateItem(prev, index, { data }))}
                   id={toDisplayId(entry.id)}
                   onIdChange={(id) =>
-                    setProcessorLists((prev) => updateItem(prev, index, { id: fromDisplayId(id) }))
+                    setItems('processor_list', (prev) => updateItem(prev, index, { id: fromDisplayId(id) }))
                   }
                 />
               )
@@ -1007,19 +1060,16 @@ export default function App() {
           <TabPanel id="noise_settings" activeTab={activeEditor}>
             {renderCollection({
               title: 'Noise Settings',
-              items: noiseSettingsList,
-              selectedIndex: selectedNoiseSettings,
-              setSelectedIndex: setSelectedNoiseSettings,
-              setItems: setNoiseSettingsList,
+              type: 'noise_settings',
               defaultId: makeDefaultId('custom_noise_settings'),
               defaultData: createDefaultNoiseSettings,
               renderEditor: (entry, index) => (
                 <NoiseSettingsEditor
                   value={entry.data}
-                  onChange={(data) => setNoiseSettingsList((prev) => updateItem(prev, index, { data }))}
+                  onChange={(data) => setItems('noise_settings', (prev) => updateItem(prev, index, { data }))}
                   id={toDisplayId(entry.id)}
                   onIdChange={(id) =>
-                    setNoiseSettingsList((prev) => updateItem(prev, index, { id: fromDisplayId(id) }))
+                    setItems('noise_settings', (prev) => updateItem(prev, index, { id: fromDisplayId(id) }))
                   }
                 />
               )
@@ -1029,19 +1079,16 @@ export default function App() {
           <TabPanel id="density_function" activeTab={activeEditor}>
             {renderCollection({
               title: 'Density Functions',
-              items: densityFunctions,
-              selectedIndex: selectedDensityFunction,
-              setSelectedIndex: setSelectedDensityFunction,
-              setItems: setDensityFunctions,
+              type: 'density_function',
               defaultId: makeDefaultId('custom_density'),
               defaultData: createDefaultDensityFunction,
               renderEditor: (entry, index) => (
                 <DensityFunctionEditor
                   value={entry.data}
-                  onChange={(data) => setDensityFunctions((prev) => updateItem(prev, index, { data }))}
+                  onChange={(data) => setItems('density_function', (prev) => updateItem(prev, index, { data }))}
                   id={toDisplayId(entry.id)}
                   onIdChange={(id) =>
-                    setDensityFunctions((prev) => updateItem(prev, index, { id: fromDisplayId(id) }))
+                    setItems('density_function', (prev) => updateItem(prev, index, { id: fromDisplayId(id) }))
                   }
                 />
               )
@@ -1051,19 +1098,16 @@ export default function App() {
           <TabPanel id="noise" activeTab={activeEditor}>
             {renderCollection({
               title: 'Noise',
-              items: noises,
-              selectedIndex: selectedNoise,
-              setSelectedIndex: setSelectedNoise,
-              setItems: setNoises,
+              type: 'noise',
               defaultId: makeDefaultId('custom_noise'),
               defaultData: createDefaultNoise,
               renderEditor: (entry, index) => (
                 <NoiseEditor
                   value={entry.data}
-                  onChange={(data) => setNoises((prev) => updateItem(prev, index, { data }))}
+                  onChange={(data) => setItems('noise', (prev) => updateItem(prev, index, { data }))}
                   id={toDisplayId(entry.id)}
                   onIdChange={(id) =>
-                    setNoises((prev) => updateItem(prev, index, { id: fromDisplayId(id) }))
+                    setItems('noise', (prev) => updateItem(prev, index, { id: fromDisplayId(id) }))
                   }
                 />
               )
@@ -1073,19 +1117,16 @@ export default function App() {
           <TabPanel id="dimension" activeTab={activeEditor}>
             {renderCollection({
               title: 'Dimensions',
-              items: dimensions,
-              selectedIndex: selectedDimension,
-              setSelectedIndex: setSelectedDimension,
-              setItems: setDimensions,
+              type: 'dimension',
               defaultId: makeDefaultId('custom_dimension'),
               defaultData: createDefaultDimension,
               renderEditor: (entry, index) => (
                 <DimensionEditor
                   value={entry.data}
-                  onChange={(data) => setDimensions((prev) => updateItem(prev, index, { data }))}
+                  onChange={(data) => setItems('dimension', (prev) => updateItem(prev, index, { data }))}
                   id={toDisplayId(entry.id)}
                   onIdChange={(id) =>
-                    setDimensions((prev) => updateItem(prev, index, { id: fromDisplayId(id) }))
+                    setItems('dimension', (prev) => updateItem(prev, index, { id: fromDisplayId(id) }))
                   }
                 />
               )
@@ -1095,19 +1136,16 @@ export default function App() {
           <TabPanel id="world_preset" activeTab={activeEditor}>
             {renderCollection({
               title: 'World Presets',
-              items: worldPresets,
-              selectedIndex: selectedWorldPreset,
-              setSelectedIndex: setSelectedWorldPreset,
-              setItems: setWorldPresets,
+              type: 'world_preset',
               defaultId: makeDefaultId('custom_preset'),
               defaultData: createDefaultWorldPreset,
               renderEditor: (entry, index) => (
                 <WorldPresetEditor
                   value={entry.data}
-                  onChange={(data) => setWorldPresets((prev) => updateItem(prev, index, { data }))}
+                  onChange={(data) => setItems('world_preset', (prev) => updateItem(prev, index, { data }))}
                   id={toDisplayId(entry.id)}
                   onIdChange={(id) =>
-                    setWorldPresets((prev) => updateItem(prev, index, { id: fromDisplayId(id) }))
+                    setItems('world_preset', (prev) => updateItem(prev, index, { id: fromDisplayId(id) }))
                   }
                 />
               )
@@ -1117,19 +1155,16 @@ export default function App() {
           <TabPanel id="flat_level_generator_preset" activeTab={activeEditor}>
             {renderCollection({
               title: 'Flat Presets',
-              items: flatPresets,
-              selectedIndex: selectedFlatPreset,
-              setSelectedIndex: setSelectedFlatPreset,
-              setItems: setFlatPresets,
+              type: 'flat_level_generator_preset',
               defaultId: makeDefaultId('custom_flat'),
               defaultData: createDefaultFlatPreset,
               renderEditor: (entry, index) => (
                 <FlatLevelGeneratorPresetEditor
                   value={entry.data}
-                  onChange={(data) => setFlatPresets((prev) => updateItem(prev, index, { data }))}
+                  onChange={(data) => setItems('flat_level_generator_preset', (prev) => updateItem(prev, index, { data }))}
                   id={toDisplayId(entry.id)}
                   onIdChange={(id) =>
-                    setFlatPresets((prev) => updateItem(prev, index, { id: fromDisplayId(id) }))
+                    setItems('flat_level_generator_preset', (prev) => updateItem(prev, index, { id: fromDisplayId(id) }))
                   }
                 />
               )
@@ -1139,18 +1174,15 @@ export default function App() {
           <TabPanel id="tag" activeTab={activeEditor}>
             {renderCollection({
               title: 'Tags',
-              items: tags,
-              selectedIndex: selectedTag,
-              setSelectedIndex: setSelectedTag,
-              setItems: setTags,
+              type: 'tag',
               defaultId: makeDefaultId('worldgen/biome/custom_tag'),
               defaultData: createDefaultTag,
               renderEditor: (entry, index) => (
                 <TagEditor
                   value={entry.data}
-                  onChange={(data) => setTags((prev) => updateItem(prev, index, { data }))}
+                  onChange={(data) => setItems('tag', (prev) => updateItem(prev, index, { data }))}
                   id={toDisplayId(entry.id)}
-                  onIdChange={(id) => setTags((prev) => updateItem(prev, index, { id: fromDisplayId(id) }))}
+                  onIdChange={(id) => setItems('tag', (prev) => updateItem(prev, index, { id: fromDisplayId(id) }))}
                 />
               )
             })}
