@@ -2,13 +2,18 @@
   box-sizing: border-box;
 }
 
+html,
 body {
   margin: 0;
+  height: 100%;
+  overflow: hidden;
   font-family: var(--ui-font-sans);
   background: var(--ui-bg-base);
   color: var(--ui-text);
 }
 
 #root {
-  min-height: 100vh;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
 }

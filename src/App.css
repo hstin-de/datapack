@@ -1,7 +1,8 @@
 .app {
-  min-height: 100vh;
+  height: 100vh;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
 }
 
 .app__header {
@@ -11,6 +12,7 @@
   padding: var(--ui-space-6) var(--ui-space-8);
   border-bottom: 1px solid var(--ui-border);
   background: linear-gradient(135deg, #202225, #1b1c1f);
+  flex-shrink: 0;
 }
 
 .app__header-actions {
@@ -48,6 +50,7 @@
   border-bottom: 1px solid var(--ui-border);
   background: var(--ui-bg-elevated);
   overflow-x: auto;
+  flex-shrink: 0;
 }
 
 .app__layer-icon {
@@ -119,29 +122,36 @@
 }
 
 .app__content {
+  flex: 1;
+  overflow: hidden;
   padding: var(--ui-space-8);
   display: grid;
   grid-template-columns: 260px minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr);
   gap: var(--ui-space-6);
+  height: 100%;
 }
 
 .app__sidebar {
-  position: sticky;
-  top: var(--ui-space-6);
-  align-self: start;
   display: grid;
   gap: var(--ui-space-5);
-  padding: var(--ui-space-4);
+  padding-bottom: var(--ui-space-4);
   border-radius: var(--ui-radius-lg);
   background: var(--ui-bg-elevated);
   border: 1px solid var(--ui-border-subtle);
-  max-height: calc(100vh - var(--ui-space-6) * 2);
+  height: 100%;
   overflow-y: auto;
+  align-content: start;
 }
 
 .app__main {
   display: grid;
   gap: var(--ui-space-6);
+  height: 100%;
+  overflow-y: auto;
+  align-content: start;
+  padding-right: var(--ui-space-2);
+  /* Prevent scrollbar overlap content */
 }
 
 .app__meta-card {
@@ -169,6 +179,11 @@
 .app__nav-group {
   display: grid;
   gap: var(--ui-space-2);
+  padding: 0 var(--ui-space-4);
+}
+
+.app__nav-group:first-child {
+  margin-top: var(--ui-space-4);
 }
 
 .app__nav-title {
@@ -177,6 +192,12 @@
   text-transform: uppercase;
   color: var(--ui-text-muted);
   font-weight: 600;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: var(--ui-bg-elevated);
+  padding: var(--ui-space-2) 0;
+  margin-bottom: var(--ui-space-1);
 }
 
 .app__nav-list {
@@ -245,7 +266,7 @@
   gap: var(--ui-space-3);
 }
 
-.biome-editor__spawner-category + .biome-editor__spawner-category {
+.biome-editor__spawner-category+.biome-editor__spawner-category {
   margin-top: var(--ui-space-3);
 }
 
