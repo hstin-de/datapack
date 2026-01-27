@@ -135,6 +135,8 @@
   border-radius: var(--ui-radius-lg);
   background: var(--ui-bg-elevated);
   border: 1px solid var(--ui-border-subtle);
+  max-height: calc(100vh - var(--ui-space-6) * 2);
+  overflow-y: auto;
 }
 
 .app__main {

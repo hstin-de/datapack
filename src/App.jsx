@@ -17,6 +17,17 @@ import { WorldPresetEditor } from './editors/WorldPresetEditor.jsx';
 import { FlatLevelGeneratorPresetEditor } from './editors/FlatLevelGeneratorPresetEditor.jsx';
 import { TagEditor } from './editors/TagEditor.jsx';
 import { PackMcmetaEditor } from './editors/PackMcmetaEditor.jsx';
+import { LootTableEditor } from './editors/LootTableEditor.jsx';
+import { RecipeEditor } from './editors/RecipeEditor.jsx';
+import { AdvancementEditor } from './editors/AdvancementEditor.jsx';
+import { PredicateEditor } from './editors/PredicateEditor.jsx';
+import { ItemModifierEditor } from './editors/ItemModifierEditor.jsx';
+import { DimensionTypeEditor } from './editors/DimensionTypeEditor.jsx';
+import { DamageTypeEditor } from './editors/DamageTypeEditor.jsx';
+import { ChatTypeEditor } from './editors/ChatTypeEditor.jsx';
+import { FunctionEditor } from './editors/FunctionEditor.jsx';
+import { NbtManager } from './editors/NbtManager.jsx';
+import { GenericRegistryEditor } from './editors/GenericRegistryEditor.jsx';
 import {
   Badge,
   Button,
@@ -41,7 +52,8 @@ import {
   validateDimension,
   validateWorldPreset,
   validateFlatLevelGeneratorPreset,
-  validateTag
+  validateTag,
+  validateGenericJson
 } from './utils/validation.js';
 import './App.css';
 
@@ -215,7 +227,8 @@ const editorGroups = [
       { id: 'structure', label: 'Structures' },
       { id: 'structure_set', label: 'Structure Sets' },
       { id: 'template_pool', label: 'Template Pools' },
-      { id: 'processor_list', label: 'Processor Lists' }
+      { id: 'processor_list', label: 'Processor Lists' },
+      { id: 'nbt', label: 'Structure NBT' }
     ]
   },
   {
@@ -230,9 +243,39 @@ const editorGroups = [
     label: 'Dimensions & Presets',
     items: [
       { id: 'dimension', label: 'Dimensions' },
+      { id: 'dimension_type', label: 'Dimension Types' },
       { id: 'world_preset', label: 'World Presets' },
       { id: 'flat_level_generator_preset', label: 'Flat Presets' }
     ]
+  },
+  {
+    label: 'Gameplay',
+    items: [
+      { id: 'loot_table', label: 'Loot Tables' },
+      { id: 'recipe', label: 'Recipes' },
+      { id: 'advancement', label: 'Advancements' },
+      { id: 'predicate', label: 'Predicates' },
+      { id: 'item_modifier', label: 'Item Modifiers' },
+      { id: 'function', label: 'Functions' }
+    ]
+  },
+  {
+    label: 'Registry',
+    items: [
+      { id: 'damage_type', label: 'Damage Types' },
+      { id: 'chat_type', label: 'Chat Types' },
+      { id: 'trim_pattern', label: 'Trim Patterns' },
+      { id: 'trim_material', label: 'Trim Materials' },
+      { id: 'banner_pattern', label: 'Banner Patterns' },
+      { id: 'wolf_variant', label: 'Wolf Variants' },
+      { id: 'enchantment', label: 'Enchantments' },
+      { id: 'jukebox_song', label: 'Jukebox Songs' },
+      { id: 'painting_variant', label: 'Painting Variants' }
+    ]
+  },
+  {
+    label: 'Other',
+    items: [{ id: 'passthrough', label: 'Other Files' }]
   }
 ];
 
@@ -252,7 +295,24 @@ const labelMap = {
   dimension: 'Dimension',
   world_preset: 'World Preset',
   flat_level_generator_preset: 'Flat Preset',
-  tag: 'Tag'
+  tag: 'Tag',
+  loot_table: 'Loot Table',
+  recipe: 'Recipe',
+  advancement: 'Advancement',
+  predicate: 'Predicate',
+  item_modifier: 'Item Modifier',
+  dimension_type: 'Dimension Type',
+  damage_type: 'Damage Type',
+  chat_type: 'Chat Type',
+  trim_pattern: 'Trim Pattern',
+  trim_material: 'Trim Material',
+  banner_pattern: 'Banner Pattern',
+  wolf_variant: 'Wolf Variant',
+  enchantment: 'Enchantment',
+  jukebox_song: 'Jukebox Song',
+  painting_variant: 'Painting Variant',
+  function: 'Function',
+  nbt: 'NBT Structure'
 };
 
 const WORLDGEN_TYPES = [
@@ -267,24 +327,47 @@ const WORLDGEN_TYPES = [
   'noise_settings',
   'density_function',
   'noise',
-  'dimension',
   'world_preset',
   'flat_level_generator_preset'
 ];
+
+const DATAPACK_TYPES = [
+  'dimension',
+  'loot_table', 'recipe', 'advancement', 'predicate',
+  'item_modifier', 'dimension_type', 'damage_type',
+  'chat_type', 'trim_pattern', 'trim_material',
+  'banner_pattern', 'wolf_variant', 'enchantment',
+  'jukebox_song', 'painting_variant'
+];
+
+const ALL_TYPES = [...WORLDGEN_TYPES, ...DATAPACK_TYPES, 'tag', 'function', 'nbt'];
 
 const BASE_DATA_PATTERN = /^data\/([^/]+)\/worldgen\/([^/]+)\/(.+)\.json$/;
 const BASE_TAG_PATTERN = /^data\/([^/]+)\/tags\/(.+)\.json$/;
 const OVERLAY_DATA_PATTERN = /^([^/]+)\/data\/([^/]+)\/worldgen\/([^/]+)\/(.+)\.json$/;
 const OVERLAY_TAG_PATTERN = /^([^/]+)\/data\/([^/]+)\/tags\/(.+)\.json$/;
+const BASE_DATAPACK_PATTERN = /^data\/([^/]+)\/([^/]+)\/(.+)\.json$/;
+const OVERLAY_DATAPACK_PATTERN = /^([^/]+)\/data\/([^/]+)\/([^/]+)\/(.+)\.json$/;
+const BASE_FUNCTION_PATTERN = /^data\/([^/]+)\/function\/(.+)\.mcfunction$/;
+const OVERLAY_FUNCTION_PATTERN = /^([^/]+)\/data\/([^/]+)\/function\/(.+)\.mcfunction$/;
+const BASE_NBT_PATTERN = /^data\/([^/]+)\/structure\/(.+)\.nbt$/;
+const OVERLAY_NBT_PATTERN = /^([^/]+)\/data\/([^/]+)\/structure\/(.+)\.nbt$/;
 
 const createEmptyLayer = () => ({
   ...Object.fromEntries(WORLDGEN_TYPES.map((type) => [type, []])),
-  tag: []
+  ...Object.fromEntries(DATAPACK_TYPES.map((type) => [type, []])),
+  tag: [],
+  function: [],
+  nbt: [],
+  _passthrough: []
 });
 
 const createEmptySelections = () => ({
   ...Object.fromEntries(WORLDGEN_TYPES.map((type) => [type, null])),
-  tag: null
+  ...Object.fromEntries(DATAPACK_TYPES.map((type) => [type, null])),
+  tag: null,
+  function: null,
+  nbt: null
 });
 
 const sanitizeFilename = (value) => value.replace(/[^a-z0-9._-]+/gi, '_');
@@ -325,8 +408,11 @@ const extractPackMeta = async (zip) => {
 const parseDatapackZip = async (file) => {
   const zip = await JSZip.loadAsync(file);
   const layersByName = { data: createEmptyLayer() };
+  const rootPassthrough = [];
   const errors = [];
   const namespaceCounts = new Map();
+
+  const allKnownCategories = new Set([...WORLDGEN_TYPES, ...DATAPACK_TYPES]);
 
   const ensureLayer = (layerName) => {
     if (!layersByName[layerName]) {
@@ -334,10 +420,49 @@ const parseDatapackZip = async (file) => {
     }
   };
 
+  const storePassthrough = async (zipEntry, layerName) => {
+    try {
+      const data = await zipEntry.async('arraybuffer');
+      ensureLayer(layerName);
+      layersByName[layerName]._passthrough.push({ path: zipEntry.name, data });
+    } catch (error) {
+      errors.push(`${zipEntry.name}: ${error?.message || String(error)}`);
+    }
+  };
+
   await Promise.all(
     Object.values(zip.files).map(async (zipEntry) => {
       if (zipEntry.dir) return;
       if (zipEntry.name === 'pack.mcmeta') return;
+      if (zipEntry.name === 'pack.png') return; // handled separately
+
+      // Check if this is a data/ file or an overlay data/ file
+      const isDataFile = zipEntry.name.startsWith('data/');
+      const overlayDataMatch = !isDataFile && zipEntry.name.match(/^([^/]+)\/data\//);
+      const isOverlayDataFile = Boolean(overlayDataMatch);
+
+      // Root-level non-data files (license.txt, pack.png, patrons.txt, etc.)
+      if (!isDataFile && !isOverlayDataFile) {
+        // Check if it's an overlay directory with non-data content (e.g. empty-overlay/empty.txt)
+        const overlayPrefix = zipEntry.name.match(/^([^/]+)\//);
+        if (overlayPrefix) {
+          try {
+            const data = await zipEntry.async('arraybuffer');
+            rootPassthrough.push({ path: zipEntry.name, data });
+          } catch (error) {
+            errors.push(`${zipEntry.name}: ${error?.message || String(error)}`);
+          }
+        } else {
+          // Top-level file
+          try {
+            const data = await zipEntry.async('arraybuffer');
+            rootPassthrough.push({ path: zipEntry.name, data });
+          } catch (error) {
+            errors.push(`${zipEntry.name}: ${error?.message || String(error)}`);
+          }
+        }
+        return;
+      }
 
       let layerName = 'data';
       let namespace, type, path, isTag = false;
@@ -371,54 +496,195 @@ const parseDatapackZip = async (file) => {
         return;
       }
 
-      // Try base data pattern
+      // Try .mcfunction files
+      const baseFuncMatch = zipEntry.name.match(BASE_FUNCTION_PATTERN);
+      if (baseFuncMatch) {
+        const [, ns, p] = baseFuncMatch;
+        ensureLayer('data');
+        namespaceCounts.set(ns, (namespaceCounts.get(ns) || 0) + 1);
+        try {
+          const contents = await zipEntry.async('string');
+          layersByName['data'].function.push({ id: `${ns}:${p}`, data: contents });
+        } catch (error) {
+          errors.push(`${zipEntry.name}: ${error?.message || String(error)}`);
+        }
+        return;
+      }
+      const overlayFuncMatch = zipEntry.name.match(OVERLAY_FUNCTION_PATTERN);
+      if (overlayFuncMatch) {
+        const [, ln, ns, p] = overlayFuncMatch;
+        ensureLayer(ln);
+        namespaceCounts.set(ns, (namespaceCounts.get(ns) || 0) + 1);
+        try {
+          const contents = await zipEntry.async('string');
+          layersByName[ln].function.push({ id: `${ns}:${p}`, data: contents });
+        } catch (error) {
+          errors.push(`${zipEntry.name}: ${error?.message || String(error)}`);
+        }
+        return;
+      }
+
+      // Try .nbt files
+      const baseNbtMatch = zipEntry.name.match(BASE_NBT_PATTERN);
+      if (baseNbtMatch) {
+        const [, ns, p] = baseNbtMatch;
+        ensureLayer('data');
+        namespaceCounts.set(ns, (namespaceCounts.get(ns) || 0) + 1);
+        try {
+          const data = await zipEntry.async('arraybuffer');
+          layersByName['data'].nbt.push({ id: `${ns}:${p}`, data });
+        } catch (error) {
+          errors.push(`${zipEntry.name}: ${error?.message || String(error)}`);
+        }
+        return;
+      }
+      const overlayNbtMatch = zipEntry.name.match(OVERLAY_NBT_PATTERN);
+      if (overlayNbtMatch) {
+        const [, ln, ns, p] = overlayNbtMatch;
+        ensureLayer(ln);
+        namespaceCounts.set(ns, (namespaceCounts.get(ns) || 0) + 1);
+        try {
+          const data = await zipEntry.async('arraybuffer');
+          layersByName[ln].nbt.push({ id: `${ns}:${p}`, data });
+        } catch (error) {
+          errors.push(`${zipEntry.name}: ${error?.message || String(error)}`);
+        }
+        return;
+      }
+
+      // Try base worldgen data pattern
       const baseMatch = zipEntry.name.match(BASE_DATA_PATTERN);
       if (baseMatch) {
         [, namespace, type, path] = baseMatch;
         layerName = 'data';
-      } else {
-        // Try overlay data pattern
-        const overlayMatch = zipEntry.name.match(OVERLAY_DATA_PATTERN);
-        if (overlayMatch) {
-          [, layerName, namespace, type, path] = overlayMatch;
-        } else {
+
+        ensureLayer(layerName);
+        if (!layersByName[layerName][type]) {
+          // Unknown worldgen subtype — store as passthrough
+          await storePassthrough(zipEntry, layerName);
           return;
         }
+
+        namespaceCounts.set(namespace, (namespaceCounts.get(namespace) || 0) + 1);
+        try {
+          const contents = await zipEntry.async('string');
+          const data = JSON.parse(contents);
+          layersByName[layerName][type].push({ id: `${namespace}:${path}`, data });
+        } catch (error) {
+          errors.push(`${zipEntry.name}: ${error?.message || String(error)}`);
+        }
+        return;
       }
 
-      ensureLayer(layerName);
-      if (!layersByName[layerName][type]) return;
+      // Try overlay worldgen data pattern
+      const overlayMatch = zipEntry.name.match(OVERLAY_DATA_PATTERN);
+      if (overlayMatch) {
+        [, layerName, namespace, type, path] = overlayMatch;
 
-      namespaceCounts.set(namespace, (namespaceCounts.get(namespace) || 0) + 1);
-      try {
-        const contents = await zipEntry.async('string');
-        const data = JSON.parse(contents);
-        layersByName[layerName][type].push({ id: `${namespace}:${path}`, data });
-      } catch (error) {
-        errors.push(`${zipEntry.name}: ${error?.message || String(error)}`);
+        ensureLayer(layerName);
+        if (!layersByName[layerName][type]) {
+          await storePassthrough(zipEntry, layerName);
+          return;
+        }
+
+        namespaceCounts.set(namespace, (namespaceCounts.get(namespace) || 0) + 1);
+        try {
+          const contents = await zipEntry.async('string');
+          const data = JSON.parse(contents);
+          layersByName[layerName][type].push({ id: `${namespace}:${path}`, data });
+        } catch (error) {
+          errors.push(`${zipEntry.name}: ${error?.message || String(error)}`);
+        }
+        return;
       }
+
+      // Try generic datapack pattern (non-worldgen, non-tags)
+      const baseDatapackMatch = zipEntry.name.match(BASE_DATAPACK_PATTERN);
+      if (baseDatapackMatch) {
+        const [, ns, category, p] = baseDatapackMatch;
+        // Skip categories already handled by specific patterns
+        if (category === 'tags' || category === 'function' || category === 'structure') {
+          // structure/ non-.nbt files, or other edge cases — passthrough
+          await storePassthrough(zipEntry, 'data');
+          return;
+        }
+        if (category === 'worldgen') {
+          // worldgen files without a proper subtype folder (e.g. data/c/worldgen/biome_colors.json)
+          await storePassthrough(zipEntry, 'data');
+          return;
+        }
+        ensureLayer('data');
+        if (allKnownCategories.has(category)) {
+          namespaceCounts.set(ns, (namespaceCounts.get(ns) || 0) + 1);
+          try {
+            const contents = await zipEntry.async('string');
+            const data = JSON.parse(contents);
+            layersByName['data'][category].push({ id: `${ns}:${p}`, data });
+          } catch (error) {
+            errors.push(`${zipEntry.name}: ${error?.message || String(error)}`);
+          }
+        } else {
+          // Unknown category — passthrough
+          await storePassthrough(zipEntry, 'data');
+        }
+        return;
+      }
+
+      const overlayDatapackMatch = zipEntry.name.match(OVERLAY_DATAPACK_PATTERN);
+      if (overlayDatapackMatch) {
+        const [, ln, ns, category, p] = overlayDatapackMatch;
+        if (category === 'tags' || category === 'function' || category === 'structure') {
+          await storePassthrough(zipEntry, ln);
+          return;
+        }
+        if (category === 'worldgen') {
+          await storePassthrough(zipEntry, ln);
+          return;
+        }
+        ensureLayer(ln);
+        if (allKnownCategories.has(category)) {
+          namespaceCounts.set(ns, (namespaceCounts.get(ns) || 0) + 1);
+          try {
+            const contents = await zipEntry.async('string');
+            const data = JSON.parse(contents);
+            layersByName[ln][category].push({ id: `${ns}:${p}`, data });
+          } catch (error) {
+            errors.push(`${zipEntry.name}: ${error?.message || String(error)}`);
+          }
+        } else {
+          await storePassthrough(zipEntry, ln);
+        }
+        return;
+      }
+
+      // Anything else — passthrough
+      await storePassthrough(zipEntry, isOverlayDataFile ? overlayDataMatch[1] : 'data');
     })
   );
 
   // Sort all entries in all layers
   for (const layer of Object.values(layersByName)) {
-    for (const type of [...WORLDGEN_TYPES, 'tag']) {
-      layer[type].sort((a, b) => a.id.localeCompare(b.id));
+    for (const type of ALL_TYPES) {
+      if (layer[type]) layer[type].sort((a, b) => a.id.localeCompare(b.id));
     }
   }
 
   let total = 0;
   for (const layer of Object.values(layersByName)) {
-    for (const type of [...WORLDGEN_TYPES, 'tag']) {
-      total += layer[type].length;
+    for (const type of ALL_TYPES) {
+      if (layer[type]) total += layer[type].length;
     }
+    total += layer._passthrough.length;
   }
+  total += rootPassthrough.length;
 
   const packMeta = await extractPackMeta(zip);
+  const packPngEntry = zip.file('pack.png');
+  const packPng = packPngEntry ? await packPngEntry.async('arraybuffer') : null;
   const namespaces = Array.from(namespaceCounts.entries())
     .sort((a, b) => b[1] - a[1])
     .map(([namespace]) => namespace);
-  return { layersByName, total, errors, namespaces, packMeta };
+  return { layersByName, rootPassthrough, total, errors, namespaces, packMeta, packPng };
 };
 
 const makeUniqueId = (base, list) => {
@@ -449,11 +715,14 @@ export default function App() {
 
   const [packMeta, setPackMeta] = useState({ namespace: '' });
   const [packMcmeta, setPackMcmeta] = useState(createDefaultPackMcmeta());
+  const [rootPassthrough, setRootPassthrough] = useState([]);
+  const [packPng, setPackPng] = useState(null);
   const [importStatus, setImportStatus] = useState(null);
   const [isImporting, setIsImporting] = useState(false);
   const [exportStatus, setExportStatus] = useState(null);
   const [isExporting, setIsExporting] = useState(false);
   const fileInputRef = useRef(null);
+  const iconInputRef = useRef(null);
 
   const layerNames = Object.keys(layers);
   const currentLayer = layers[activeLayer] || createEmptyLayer();
@@ -499,7 +768,7 @@ export default function App() {
     if (activeLayer === name) setActiveLayer('data');
   };
 
-  const editorTypeForActiveEditor = activeEditor === 'tag' ? 'tag' : activeEditor;
+  const editorTypeForActiveEditor = activeEditor;
   const activeItems = getItems(editorTypeForActiveEditor);
   const activeSelectedIndex = getSelectedIndex(editorTypeForActiveEditor);
 
@@ -512,6 +781,7 @@ export default function App() {
 
   const validation = useMemo(() => {
     if (!activeEntry) return { valid: true, errors: [] };
+    if (activeEditor === 'nbt' || activeEditor === 'function') return { valid: true, errors: [] };
     const data = activeEntry.data;
     switch (activeEditor) {
       case 'configured_feature':
@@ -542,8 +812,10 @@ export default function App() {
         return validateFlatLevelGeneratorPreset(data);
       case 'tag':
         return validateTag(data);
-      default:
+      case 'biome':
         return validateBiome(data);
+      default:
+        return validateGenericJson(data);
     }
   }, [activeEditor, activeEntry]);
 
@@ -642,7 +914,7 @@ export default function App() {
     setPackMcmeta(createDefaultPackMcmeta());
 
     try {
-      const { layersByName, total, errors, namespaces, packMeta: importedMeta } =
+      const { layersByName, rootPassthrough: importedPassthrough, total, errors, namespaces, packMeta: importedMeta, packPng: importedPackPng } =
         await parseDatapackZip(file);
       if (total === 0) {
         setImportStatus({ variant: 'error', message: 'No supported JSON files found in the zip.' });
@@ -650,11 +922,13 @@ export default function App() {
       }
 
       setLayers(layersByName);
+      setRootPassthrough(importedPassthrough || []);
+      setPackPng(importedPackPng || null);
       const newSelections = {};
       for (const [name, layer] of Object.entries(layersByName)) {
         const sel = createEmptySelections();
-        for (const type of [...WORLDGEN_TYPES, 'tag']) {
-          sel[type] = layer[type].length > 0 ? 0 : null;
+        for (const type of ALL_TYPES) {
+          if (layer[type]) sel[type] = layer[type].length > 0 ? 0 : null;
         }
         newSelections[name] = sel;
       }
@@ -726,12 +1000,64 @@ export default function App() {
         });
       };
 
+      const addDatapackEntries = (prefix, type, items) => {
+        items.forEach((item) => {
+          if (!item?.id) { warnings.push(`${type}: entry missing id`); return; }
+          const { namespace: entryNamespace, path } = splitResourceLocation(item.id, defaultNamespace);
+          const namespace = entryNamespace || defaultNamespace;
+          if (!path) { warnings.push(`${type}: invalid id "${item.id}"`); return; }
+          const filePath = `${prefix}data/${namespace}/${type}/${path}.json`;
+          zip.file(filePath, JSON.stringify(item.data ?? {}, null, 2));
+        });
+      };
+
+      const addFunctions = (prefix, items) => {
+        items.forEach((item) => {
+          if (!item?.id) { warnings.push('function: entry missing id'); return; }
+          const { namespace: entryNamespace, path } = splitResourceLocation(item.id, defaultNamespace);
+          const namespace = entryNamespace || defaultNamespace;
+          if (!path) { warnings.push(`function: invalid id "${item.id}"`); return; }
+          const filePath = `${prefix}data/${namespace}/function/${path}.mcfunction`;
+          zip.file(filePath, typeof item.data === 'string' ? item.data : '');
+        });
+      };
+
+      const addNbtFiles = (prefix, items) => {
+        items.forEach((item) => {
+          if (!item?.id) { warnings.push('nbt: entry missing id'); return; }
+          const { namespace: entryNamespace, path } = splitResourceLocation(item.id, defaultNamespace);
+          const namespace = entryNamespace || defaultNamespace;
+          if (!path) { warnings.push(`nbt: invalid id "${item.id}"`); return; }
+          const filePath = `${prefix}data/${namespace}/structure/${path}.nbt`;
+          zip.file(filePath, item.data);
+        });
+      };
+
       for (const [layerName, layer] of Object.entries(layers)) {
         const prefix = layerName === 'data' ? '' : `${layerName}/`;
         for (const type of WORLDGEN_TYPES) {
           addEntries(prefix, type, layer[type] || []);
         }
+        for (const type of DATAPACK_TYPES) {
+          addDatapackEntries(prefix, type, layer[type] || []);
+        }
         addTags(prefix, layer.tag || []);
+        addFunctions(prefix, layer.function || []);
+        addNbtFiles(prefix, layer.nbt || []);
+        // Write passthrough files
+        for (const pt of layer._passthrough || []) {
+          zip.file(pt.path, pt.data);
+        }
+      }
+
+      // Write pack.png
+      if (packPng) {
+        zip.file('pack.png', packPng);
+      }
+
+      // Write root-level passthrough files
+      for (const pt of rootPassthrough) {
+        zip.file(pt.path, pt.data);
       }
 
       const blob = await zip.generateAsync({ type: 'blob' });
@@ -898,6 +1224,44 @@ export default function App() {
                       placeholder="example_namespace"
                     />
                   </FormField>
+                </div>
+              </Card>
+
+              <Card title="Pack Icon" className="app__meta-card">
+                <div style={{ display: 'flex', alignItems: 'flex-start', gap: '16px' }}>
+                  {packPng ? (
+                    <img
+                      src={URL.createObjectURL(new Blob([packPng], { type: 'image/png' }))}
+                      alt="Pack icon"
+                      style={{ width: 64, height: 64, imageRendering: 'pixelated', borderRadius: '4px', border: '1px solid var(--ui-border-subtle)' }}
+                    />
+                  ) : (
+                    <div style={{ width: 64, height: 64, borderRadius: '4px', border: '1px dashed var(--ui-border-subtle)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--ui-text-muted)', fontSize: '11px' }}>
+                      No icon
+                    </div>
+                  )}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                    <input
+                      ref={iconInputRef}
+                      type="file"
+                      accept="image/png"
+                      style={{ display: 'none' }}
+                      onChange={async (e) => {
+                        const file = e.target.files?.[0];
+                        if (file) setPackPng(await file.arrayBuffer());
+                        e.target.value = '';
+                      }}
+                    />
+                    <Button variant="secondary" size="sm" icon={<Upload size={14} />} onClick={() => iconInputRef.current?.click()}>
+                      {packPng ? 'Replace' : 'Upload'} icon
+                    </Button>
+                    {packPng && (
+                      <Button variant="ghost" size="sm" icon={<X size={14} />} onClick={() => setPackPng(null)}>
+                        Remove icon
+                      </Button>
+                    )}
+                    <span style={{ fontSize: '11px', color: 'var(--ui-text-muted)' }}>PNG, typically 64x64 or 128x128</span>
+                  </div>
                 </div>
               </Card>
 
@@ -1186,6 +1550,242 @@ export default function App() {
                 />
               )
             })}
+          </TabPanel>
+
+          <TabPanel id="loot_table" activeTab={activeEditor}>
+            {renderCollection({
+              title: 'Loot Tables',
+              type: 'loot_table',
+              defaultId: makeDefaultId('custom_loot_table'),
+              defaultData: () => ({ type: 'minecraft:empty', pools: [] }),
+              renderEditor: (entry, index) => (
+                <LootTableEditor
+                  value={entry.data}
+                  {...makeEditorProps('loot_table')}
+                  id={toDisplayId(entry.id)}
+                />
+              )
+            })}
+          </TabPanel>
+
+          <TabPanel id="recipe" activeTab={activeEditor}>
+            {renderCollection({
+              title: 'Recipes',
+              type: 'recipe',
+              defaultId: makeDefaultId('custom_recipe'),
+              defaultData: () => ({ type: 'minecraft:crafting_shapeless', ingredients: [], result: { item: 'minecraft:stone' } }),
+              renderEditor: (entry, index) => (
+                <RecipeEditor
+                  value={entry.data}
+                  {...makeEditorProps('recipe')}
+                  id={toDisplayId(entry.id)}
+                />
+              )
+            })}
+          </TabPanel>
+
+          <TabPanel id="advancement" activeTab={activeEditor}>
+            {renderCollection({
+              title: 'Advancements',
+              type: 'advancement',
+              defaultId: makeDefaultId('custom_advancement'),
+              defaultData: () => ({ criteria: {} }),
+              renderEditor: (entry, index) => (
+                <AdvancementEditor
+                  value={entry.data}
+                  {...makeEditorProps('advancement')}
+                  id={toDisplayId(entry.id)}
+                />
+              )
+            })}
+          </TabPanel>
+
+          <TabPanel id="predicate" activeTab={activeEditor}>
+            {renderCollection({
+              title: 'Predicates',
+              type: 'predicate',
+              defaultId: makeDefaultId('custom_predicate'),
+              defaultData: () => ({ condition: 'minecraft:random_chance', chance: 0.5 }),
+              renderEditor: (entry, index) => (
+                <PredicateEditor
+                  value={entry.data}
+                  {...makeEditorProps('predicate')}
+                  id={toDisplayId(entry.id)}
+                />
+              )
+            })}
+          </TabPanel>
+
+          <TabPanel id="item_modifier" activeTab={activeEditor}>
+            {renderCollection({
+              title: 'Item Modifiers',
+              type: 'item_modifier',
+              defaultId: makeDefaultId('custom_item_modifier'),
+              defaultData: () => ({ function: 'minecraft:set_count', count: 1 }),
+              renderEditor: (entry, index) => (
+                <ItemModifierEditor
+                  value={entry.data}
+                  {...makeEditorProps('item_modifier')}
+                  id={toDisplayId(entry.id)}
+                />
+              )
+            })}
+          </TabPanel>
+
+          <TabPanel id="dimension_type" activeTab={activeEditor}>
+            {renderCollection({
+              title: 'Dimension Types',
+              type: 'dimension_type',
+              defaultId: makeDefaultId('custom_dimension_type'),
+              defaultData: () => ({
+                ultrawarm: false, natural: true, piglin_safe: false,
+                respawn_anchor_works: false, bed_works: true, has_raids: true,
+                has_skylight: true, has_ceiling: false, coordinate_scale: 1.0,
+                ambient_light: 0.0, logical_height: 384, effects: 'minecraft:overworld',
+                infiniburn: '#minecraft:infiniburn_overworld', min_y: -64, height: 384,
+                monster_spawn_light_level: 0, monster_spawn_block_light_limit: 0
+              }),
+              renderEditor: (entry, index) => (
+                <DimensionTypeEditor
+                  value={entry.data}
+                  onChange={(data) => setItems('dimension_type', (prev) => updateItem(prev, index, { data }))}
+                  id={toDisplayId(entry.id)}
+                  onIdChange={(id) => setItems('dimension_type', (prev) => updateItem(prev, index, { id: fromDisplayId(id) }))}
+                />
+              )
+            })}
+          </TabPanel>
+
+          <TabPanel id="damage_type" activeTab={activeEditor}>
+            {renderCollection({
+              title: 'Damage Types',
+              type: 'damage_type',
+              defaultId: makeDefaultId('custom_damage_type'),
+              defaultData: () => ({ message_id: 'custom', exhaustion: 0.0, scaling: 'when_caused_by_living_non_player' }),
+              renderEditor: (entry, index) => (
+                <DamageTypeEditor
+                  value={entry.data}
+                  onChange={(data) => setItems('damage_type', (prev) => updateItem(prev, index, { data }))}
+                  id={toDisplayId(entry.id)}
+                  onIdChange={(id) => setItems('damage_type', (prev) => updateItem(prev, index, { id: fromDisplayId(id) }))}
+                />
+              )
+            })}
+          </TabPanel>
+
+          <TabPanel id="chat_type" activeTab={activeEditor}>
+            {renderCollection({
+              title: 'Chat Types',
+              type: 'chat_type',
+              defaultId: makeDefaultId('custom_chat_type'),
+              defaultData: () => ({
+                chat: { translation_key: 'chat.type.text', parameters: ['sender', 'content'] },
+                narration: { translation_key: 'chat.type.text.narrate', parameters: ['sender', 'content'] }
+              }),
+              renderEditor: (entry, index) => (
+                <ChatTypeEditor
+                  value={entry.data}
+                  onChange={(data) => setItems('chat_type', (prev) => updateItem(prev, index, { data }))}
+                  id={toDisplayId(entry.id)}
+                  onIdChange={(id) => setItems('chat_type', (prev) => updateItem(prev, index, { id: fromDisplayId(id) }))}
+                />
+              )
+            })}
+          </TabPanel>
+
+          <TabPanel id="function" activeTab={activeEditor}>
+            {renderCollection({
+              title: 'Functions',
+              type: 'function',
+              defaultId: makeDefaultId('custom_function'),
+              defaultData: () => '# Commands here\n',
+              renderEditor: (entry, index) => (
+                <FunctionEditor
+                  value={entry.data}
+                  onChange={(data) => setItems('function', (prev) => updateItem(prev, index, { data }))}
+                  id={toDisplayId(entry.id)}
+                  onIdChange={(id) => setItems('function', (prev) => updateItem(prev, index, { id: fromDisplayId(id) }))}
+                />
+              )
+            })}
+          </TabPanel>
+
+          <TabPanel id="nbt" activeTab={activeEditor}>
+            <NbtManager
+              items={getItems('nbt')}
+              onAdd={(item) => {
+                const ns = packMeta.namespace.trim() || 'custom';
+                setItems('nbt', (prev) => {
+                  const id = makeUniqueId(`${ns}:${item.id}`, prev);
+                  return [...prev, { id, data: item.data }];
+                });
+              }}
+              onRemove={(index) => {
+                setItems('nbt', (prev) => prev.filter((_, i) => i !== index));
+              }}
+            />
+          </TabPanel>
+
+          {DATAPACK_TYPES.filter((t) => !['dimension', 'loot_table', 'recipe', 'advancement', 'predicate', 'item_modifier', 'dimension_type', 'damage_type', 'chat_type'].includes(t)).map((type) => (
+            <TabPanel key={type} id={type} activeTab={activeEditor}>
+              {renderCollection({
+                title: labelMap[type] + 's',
+                type,
+                defaultId: makeDefaultId(`custom_${type}`),
+                defaultData: () => ({}),
+                renderEditor: (entry, index) => (
+                  <GenericRegistryEditor
+                    value={entry.data}
+                    onChange={(data) => setItems(type, (prev) => updateItem(prev, index, { data }))}
+                    id={toDisplayId(entry.id)}
+                    onIdChange={(id) => setItems(type, (prev) => updateItem(prev, index, { id: fromDisplayId(id) }))}
+                    typeName={labelMap[type]}
+                  />
+                )
+              })}
+            </TabPanel>
+          ))}
+
+          <TabPanel id="passthrough" activeTab={activeEditor}>
+            <Card title="Other Files" className="passthrough-panel">
+              <p style={{ color: 'var(--ui-text-muted)', fontSize: '13px', marginBottom: '12px' }}>
+                Files that don't match any known datapack category. These are preserved as-is during import/export.
+              </p>
+
+              {(() => {
+                const layerPt = currentLayer._passthrough || [];
+                const allPt = [...rootPassthrough, ...layerPt];
+                if (allPt.length === 0) {
+                  return <p style={{ color: 'var(--ui-text-muted)', fontStyle: 'italic' }}>No other files.</p>;
+                }
+                return (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                    {rootPassthrough.length > 0 && (
+                      <>
+                        <div style={{ fontSize: '12px', fontWeight: 600, color: 'var(--ui-text-muted)', padding: '6px 0 2px' }}>Root files</div>
+                        {rootPassthrough.map((pt, i) => (
+                          <div key={`root-${i}`} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '4px 8px', borderRadius: '4px', background: 'var(--ui-bg-subtle, #f5f5f5)', fontSize: '13px', fontFamily: 'monospace' }}>
+                            <span>{pt.path}</span>
+                            <span style={{ color: 'var(--ui-text-muted)', fontSize: '11px', marginLeft: '12px', whiteSpace: 'nowrap' }}>{pt.data.byteLength != null ? `${(pt.data.byteLength / 1024).toFixed(1)} KB` : ''}</span>
+                          </div>
+                        ))}
+                      </>
+                    )}
+                    {layerPt.length > 0 && (
+                      <>
+                        <div style={{ fontSize: '12px', fontWeight: 600, color: 'var(--ui-text-muted)', padding: '6px 0 2px' }}>Layer: {activeLayer}/</div>
+                        {layerPt.map((pt, i) => (
+                          <div key={`layer-${i}`} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '4px 8px', borderRadius: '4px', background: 'var(--ui-bg-subtle, #f5f5f5)', fontSize: '13px', fontFamily: 'monospace' }}>
+                            <span>{pt.path}</span>
+                            <span style={{ color: 'var(--ui-text-muted)', fontSize: '11px', marginLeft: '12px', whiteSpace: 'nowrap' }}>{pt.data.byteLength != null ? `${(pt.data.byteLength / 1024).toFixed(1)} KB` : ''}</span>
+                          </div>
+                        ))}
+                      </>
+                    )}
+                  </div>
+                );
+              })()}
+            </Card>
           </TabPanel>
         </section>
       </main>

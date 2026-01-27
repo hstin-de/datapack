@@ -491,6 +491,19 @@ export function validatePackMcmeta(data) {
   return validate('pack_mcmeta', data);
 }
 
+/**
+ * Validate generic JSON data (for types without specific schemas)
+ */
+export function validateGenericJson(data) {
+  if (data === null || data === undefined) {
+    return { valid: false, errors: [{ path: '', message: 'Data is required' }] };
+  }
+  if (typeof data !== 'object') {
+    return { valid: false, errors: [{ path: '', message: 'Data must be a JSON object or array' }] };
+  }
+  return { valid: true, errors: [] };
+}
+
 // Export everything
 export {
   ajv,
