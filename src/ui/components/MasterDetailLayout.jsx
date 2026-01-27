@@ -78,7 +78,7 @@ export function MasterDetailLayout({
                                 <span className="ui-master-detail__item-label">
                                     {renderItem(item)}
                                 </span>
-                                {onRemove && items.length > 1 && (
+                                {onRemove && (
                                     <button
                                         className="ui-master-detail__item-remove"
                                         onClick={(e) => { e.stopPropagation(); onRemove(idx); }}

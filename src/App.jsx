@@ -1233,6 +1233,9 @@ export default function App() {
                     onClick={() => setActiveEditor(item.id)}
                   >
                     {item.label}
+                    {item.id !== 'metadata' && item.id !== 'passthrough' && (
+                      <span className="app__nav-item-count">{(currentLayer[item.id] || []).length}</span>
+                    )}
                   </button>
                 ))}
               </div>

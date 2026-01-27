@@ -215,6 +215,21 @@
   cursor: pointer;
   font-size: var(--ui-text-sm);
   transition: background 150ms ease, border 150ms ease, color 150ms ease;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--ui-space-2);
+}
+
+.app__nav-item-count {
+  font-size: var(--ui-text-xs);
+  color: var(--ui-text-muted);
+  background: var(--ui-bg-elevated);
+  padding: 0 6px;
+  border-radius: var(--ui-radius-sm);
+  min-width: 20px;
+  text-align: center;
+  line-height: 1.6;
 }
 
 .app__nav-item:hover {
