@@ -58,6 +58,16 @@ export function ProcessorListEditor({ value, onChange, id, onIdChange }) {
               <Button
                 variant="ghost"
                 size="sm"
+                onClick={() => {
+                  const clone = JSON.parse(JSON.stringify(processor));
+                  handleChange({ processors: [...list.processors.slice(0, index + 1), clone, ...list.processors.slice(index + 1)] });
+                }}
+              >
+                Duplicate
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
                 onClick={() => handleChange({ processors: list.processors.filter((_, i) => i !== index) })}
               >
                 Remove

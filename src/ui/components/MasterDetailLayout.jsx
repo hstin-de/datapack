@@ -1,5 +1,5 @@
 import React from 'react';
-import { Plus, Trash2 } from 'lucide-react';
+import { Copy, Plus, Trash2 } from 'lucide-react';
 import { IconButton } from './Button';
 import { EmptyState } from './EmptyState';
 
@@ -28,6 +28,7 @@ export function MasterDetailLayout({
     onSelect,
     onAdd,
     onRemove,
+    onDuplicate,
     title = 'Items',
     renderItem = (item) => item.niceName || item.idPath || 'Unnamed',
     emptyMessage = 'No items',
@@ -78,15 +79,26 @@ export function MasterDetailLayout({
                                 <span className="ui-master-detail__item-label">
                                     {renderItem(item)}
                                 </span>
-                                {onRemove && (
-                                    <button
-                                        className="ui-master-detail__item-remove"
-                                        onClick={(e) => { e.stopPropagation(); onRemove(idx); }}
-                                        title="Remove"
-                                    >
-                                        <Trash2 size={12} />
-                                    </button>
-                                )}
+                                <div className="ui-master-detail__item-actions">
+                                    {onDuplicate && (
+                                        <button
+                                            className="ui-master-detail__item-remove"
+                                            onClick={(e) => { e.stopPropagation(); onDuplicate(idx); }}
+                                            title="Duplicate"
+                                        >
+                                            <Copy size={12} />
+                                        </button>
+                                    )}
+                                    {onRemove && (
+                                        <button
+                                            className="ui-master-detail__item-remove"
+                                            onClick={(e) => { e.stopPropagation(); onRemove(idx); }}
+                                            title="Remove"
+                                        >
+                                            <Trash2 size={12} />
+                                        </button>
+                                    )}
+                                </div>
                             </div>
                         ))
                     )}

@@ -382,6 +382,12 @@ function SpawnerCategoryEditor({ label, entries, onChange }) {
                   />
                 </FormField>
                 <div className="biome-editor__spawner-actions">
+                  <Button variant="ghost" size="sm" onClick={() => {
+                    const clone = JSON.parse(JSON.stringify(entries[index]));
+                    onChange([...entries.slice(0, index + 1), clone, ...entries.slice(index + 1)]);
+                  }}>
+                    Duplicate
+                  </Button>
                   <Button variant="ghost" size="sm" onClick={() => handleRemove(index)}>
                     Remove
                   </Button>

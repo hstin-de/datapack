@@ -60,6 +60,12 @@ export function StructureSetEditor({ value, onChange, id, onIdChange }) {
               value={entry.weight ?? 1}
               onChange={(e) => handleStructureChange(index, { weight: Number(e.target.value) || 1 })}
             />
+            <Button variant="ghost" size="sm" onClick={() => {
+              const clone = JSON.parse(JSON.stringify(entry));
+              handleChange({ structures: [...structureSet.structures.slice(0, index + 1), clone, ...structureSet.structures.slice(index + 1)] });
+            }}>
+              Duplicate
+            </Button>
             <Button variant="ghost" size="sm" onClick={() => handleChange({ structures: structureSet.structures.filter((_, i) => i !== index) })}>
               Remove
             </Button>

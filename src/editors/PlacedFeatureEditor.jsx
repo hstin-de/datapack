@@ -71,6 +71,12 @@ export function PlacedFeatureEditor({ value, onChange, id, onIdChange }) {
                 />
               </FormField>
               <div className="placed-feature-editor__row-actions">
+                <Button variant="ghost" size="sm" onClick={() => {
+                  const clone = JSON.parse(JSON.stringify(placement));
+                  handleChange({ placement: [...placements.slice(0, index + 1), clone, ...placements.slice(index + 1)] });
+                }}>
+                  Duplicate
+                </Button>
                 <Button variant="ghost" size="sm" onClick={() => handleRemovePlacement(index)}>
                   Remove
                 </Button>

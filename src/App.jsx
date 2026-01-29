@@ -859,6 +859,15 @@ export default function App() {
             return next;
           });
         }}
+        onDuplicate={(index) => {
+          setItems(type, (prev) => {
+            const clone = JSON.parse(JSON.stringify(prev[index]));
+            clone.id = makeUniqueId(clone.id, prev);
+            const next = [...prev.slice(0, index + 1), clone, ...prev.slice(index + 1)];
+            setSelectedIndex(type, index + 1);
+            return next;
+          });
+        }}
         renderItem={(item) => (item.id ? toDisplayId(item.id) : 'Unnamed')}
       >
         <div className="editor-stack">

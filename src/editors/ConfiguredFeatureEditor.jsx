@@ -159,6 +159,16 @@ function OreConfigEditor({ config, onChange }) {
           <Button
             variant="ghost"
             size="sm"
+            onClick={() => {
+              const clone = JSON.parse(JSON.stringify(target));
+              onChange({ ...config, targets: [...targets.slice(0, index + 1), clone, ...targets.slice(index + 1)] });
+            }}
+          >
+            Duplicate
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
             onClick={() => onChange({ ...config, targets: targets.filter((_, i) => i !== index) })}
           >
             Remove
@@ -248,6 +258,22 @@ function RandomPatchEditor({ config, onChange }) {
             allowTags={false}
             placeholder="minecraft:block_predicate_filter"
           />
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => {
+              const clone = JSON.parse(JSON.stringify(entry));
+              onChange({
+                ...config,
+                feature: {
+                  ...(config.feature || {}),
+                  placement: [...placement.slice(0, index + 1), clone, ...placement.slice(index + 1)]
+                }
+              });
+            }}
+          >
+            Duplicate
+          </Button>
           <Button
             variant="ghost"
             size="sm"

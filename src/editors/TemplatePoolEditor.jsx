@@ -155,6 +155,16 @@ export function TemplatePoolEditor({ value, onChange, id, onIdChange }) {
               <Button
                 variant="ghost"
                 size="sm"
+                onClick={() => {
+                  const clone = JSON.parse(JSON.stringify(entry));
+                  handleChange({ elements: [...pool.elements.slice(0, index + 1), clone, ...pool.elements.slice(index + 1)] });
+                }}
+              >
+                Duplicate
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
                 onClick={() => handleChange({ elements: pool.elements.filter((_, i) => i !== index) })}
               >
                 Remove

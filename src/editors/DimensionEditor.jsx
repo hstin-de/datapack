@@ -1,6 +1,146 @@
-import React, { useMemo } from 'react';
+import React, { useCallback, useMemo, useState, memo } from 'react';
 import { Button, Card, FormField, FormGroup, Input, Select } from '../ui';
 import { ResourceLocationInput, RegistryTagInput } from '../components';
+
+const NOISE_PARAMS = ['temperature', 'humidity', 'continentalness', 'erosion', 'weirdness', 'depth', 'offset'];
+
+function NoiseParamInput({ label, value, onChange }) {
+  const isRange = Array.isArray(value);
+  const min = isRange ? value[0] : (value ?? 0);
+  const max = isRange ? value[1] : (value ?? 0);
+
+  return (
+    <div className="noise-param">
+      <label className="noise-param__label">{label}</label>
+      <Input
+        type="number"
+        step="0.05"
+        value={min}
+        onChange={(e) => {
+          const v = parseFloat(e.target.value) || 0;
+          onChange(isRange ? [v, max] : v);
+        }}
+        className="noise-param__input"
+      />
+      {isRange && (
+        <>
+          <span className="noise-param__sep">–</span>
+          <Input
+            type="number"
+            step="0.05"
+            value={max}
+            onChange={(e) => {
+              const v = parseFloat(e.target.value) || 0;
+              onChange([min, v]);
+            }}
+            className="noise-param__input"
+          />
+        </>
+      )}
+      <Button
+        variant="ghost"
+        size="sm"
+        onClick={() => onChange(isRange ? min : [min, min])}
+        title={isRange ? 'Switch to single value' : 'Switch to range'}
+      >
+        {isRange ? '1' : '↔'}
+      </Button>
+    </div>
+  );
+}
+
+const BiomeRow = memo(function BiomeRow({ entry, onChangeBiome, onChangeEntry, onDuplicate, onRemove }) {
+  const [expanded, setExpanded] = useState(false);
+  const biomeName = typeof entry === 'string' ? entry : entry.biome;
+  const params = typeof entry === 'object' ? (entry.parameters || {}) : {};
+
+  return (
+    <div className={`multi-noise-biome-entry${expanded ? ' multi-noise-biome-entry--expanded' : ''}`}>
+      <div className="multi-noise-biome-entry__header">
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => setExpanded(!expanded)}
+          title={expanded ? 'Collapse' : 'Expand parameters'}
+          className="multi-noise-biome-entry__expand"
+        >
+          {expanded ? '▾' : '▸'}
+        </Button>
+        <ResourceLocationInput
+          value={biomeName || ''}
+          onChange={onChangeBiome}
+          registry="biome"
+          allowTags={false}
+        />
+        <Button variant="ghost" size="sm" onClick={onDuplicate} title="Duplicate biome">⧉</Button>
+        <Button variant="ghost" size="sm" onClick={onRemove} title="Remove biome">×</Button>
+      </div>
+      {expanded && typeof entry === 'object' && (
+        <div className="multi-noise-biome-entry__params">
+          {NOISE_PARAMS.map((param) => (
+            <NoiseParamInput
+              key={param}
+              label={param}
+              value={params[param] ?? 0}
+              onChange={(val) => onChangeEntry({ ...entry, parameters: { ...params, [param]: val } })}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+});
+
+function BiomeSortedList({ biomes, onBiomesChange }) {
+  const sortedIndices = useMemo(() => {
+    return biomes.map((entry, idx) => idx).sort((a, b) => {
+      const nameA = (typeof biomes[a] === 'string' ? biomes[a] : biomes[a].biome) || '';
+      const nameB = (typeof biomes[b] === 'string' ? biomes[b] : biomes[b].biome) || '';
+      return nameA.localeCompare(nameB);
+    });
+  }, [biomes]);
+
+  const handleChangeBiome = useCallback((idx, val) => {
+    const newBiomes = [...biomes];
+    const entry = biomes[idx];
+    if (typeof entry === 'string') {
+      newBiomes[idx] = val;
+    } else {
+      newBiomes[idx] = { ...entry, biome: val };
+    }
+    onBiomesChange(newBiomes);
+  }, [biomes, onBiomesChange]);
+
+  const handleChangeEntry = useCallback((idx, newEntry) => {
+    const newBiomes = [...biomes];
+    newBiomes[idx] = newEntry;
+    onBiomesChange(newBiomes);
+  }, [biomes, onBiomesChange]);
+
+  const handleDuplicate = useCallback((idx) => {
+    const clone = JSON.parse(JSON.stringify(biomes[idx]));
+    onBiomesChange([...biomes.slice(0, idx + 1), clone, ...biomes.slice(idx + 1)]);
+  }, [biomes, onBiomesChange]);
+
+  const handleRemove = useCallback((idx) => {
+    onBiomesChange(biomes.filter((_, i) => i !== idx));
+  }, [biomes, onBiomesChange]);
+
+  return (
+    <div className="multi-noise-biomes-list">
+      {sortedIndices.map((idx) => (
+        <BiomeRow
+          key={idx}
+          entry={biomes[idx]}
+          onChangeBiome={(val) => handleChangeBiome(idx, val)}
+          onChangeEntry={(newEntry) => handleChangeEntry(idx, newEntry)}
+          onDuplicate={() => handleDuplicate(idx)}
+          onRemove={() => handleRemove(idx)}
+        />
+      ))}
+    </div>
+  );
+}
 
 const GENERATOR_TYPES = ['minecraft:noise', 'minecraft:flat', 'minecraft:debug'];
 const BIOME_SOURCE_TYPES = ['minecraft:multi_noise', 'minecraft:fixed', 'minecraft:checkerboard', 'minecraft:the_end'];
@@ -98,40 +238,7 @@ export function DimensionEditor({ value, onChange, id, onIdChange }) {
                   </FormField>
                   <FormField label={`Biomes${biomeSource.biomes?.length ? ` (${biomeSource.biomes.length})` : ''}`}>
                     {biomeSource.biomes && biomeSource.biomes.length > 0 && (
-                      <div className="multi-noise-biomes-list">
-                        {biomeSource.biomes.map((entry, idx) => {
-                          const biomeName = typeof entry === 'string' ? entry : entry.biome;
-                          return (
-                            <div key={idx} className="multi-noise-biome-entry">
-                              <ResourceLocationInput
-                                value={biomeName || ''}
-                                onChange={(val) => {
-                                  const newBiomes = [...biomeSource.biomes];
-                                  if (typeof entry === 'string') {
-                                    newBiomes[idx] = val;
-                                  } else {
-                                    newBiomes[idx] = { ...entry, biome: val };
-                                  }
-                                  handleBiomeSourceChange({ biomes: newBiomes });
-                                }}
-                                registry="biome"
-                                allowTags={false}
-                              />
-                              <button
-                                type="button"
-                                className="remove-btn"
-                                onClick={() => {
-                                  const newBiomes = biomeSource.biomes.filter((_, i) => i !== idx);
-                                  handleBiomeSourceChange({ biomes: newBiomes });
-                                }}
-                                title="Remove biome"
-                              >
-                                ×
-                              </button>
-                            </div>
-                          );
-                        })}
-                      </div>
+                      <BiomeSortedList biomes={biomeSource.biomes} onBiomesChange={(newBiomes) => handleBiomeSourceChange({ biomes: newBiomes })} />
                     )}
                     <Button
                       variant="secondary"

@@ -76,6 +76,12 @@
     color: var(--ui-text-bright);
 }
 
+.ui-master-detail__item-actions {
+    display: flex;
+    align-items: center;
+    flex-shrink: 0;
+}
+
 .ui-master-detail__item-remove {
     display: flex;
     align-items: center;
