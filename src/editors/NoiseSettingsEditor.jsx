@@ -6,6 +6,10 @@ export function NoiseSettingsEditor({ value, onChange, id, onIdChange }) {
   const settings = value || {};
 
   const handleChange = (patch) => onChange({ ...settings, ...patch });
+  const noise = settings.noise || {};
+  const handleNoiseChange = (patch) => handleChange({ noise: { ...noise, ...patch } });
+
+  const sizeH = noise.size_horizontal ?? 1;
 
   return (
     <div className="noise-settings-editor">
@@ -62,6 +66,62 @@ export function NoiseSettingsEditor({ value, onChange, id, onIdChange }) {
             <Checkbox
               checked={Boolean(settings.legacy_random_source)}
               onChange={(e) => handleChange({ legacy_random_source: e.target.checked })}
+            />
+          </FormField>
+        </FormGroup>
+      </Card>
+
+      <Card title="Noise" collapsible>
+        <FormGroup>
+          <FormField label="Biome Scale" hint="Higher = larger biomes. Sets size_horizontal (1–4, integer).">
+            <div className="noise-settings-editor__scale">
+              <span className="noise-settings-editor__scale-value">{sizeH}</span>
+              <input
+                type="range"
+                min="1"
+                max="4"
+                step="1"
+                value={sizeH}
+                onChange={(e) => handleNoiseChange({ size_horizontal: Number(e.target.value) })}
+                className="noise-settings-editor__scale-slider"
+              />
+              <span className="noise-settings-editor__scale-labels">
+                <span>1 = vanilla</span>
+                <span>4 = max</span>
+              </span>
+            </div>
+          </FormField>
+          <FormField label="Min Y">
+            <Input
+              type="number"
+              value={noise.min_y ?? -64}
+              onChange={(e) => handleNoiseChange({ min_y: Number(e.target.value) || 0 })}
+            />
+          </FormField>
+          <FormField label="Height">
+            <Input
+              type="number"
+              value={noise.height ?? 384}
+              onChange={(e) => handleNoiseChange({ height: Number(e.target.value) || 0 })}
+            />
+          </FormField>
+          <FormField label="Size Horizontal" hint="Integer, 1–4">
+            <Input
+              type="number"
+              min="1"
+              max="4"
+              step="1"
+              value={noise.size_horizontal ?? 1}
+              onChange={(e) => handleNoiseChange({ size_horizontal: Math.min(4, Math.max(1, Math.round(Number(e.target.value) || 1))) })}
+            />
+          </FormField>
+          <FormField label="Size Vertical">
+            <Input
+              type="number"
+              min="1"
+              step="1"
+              value={noise.size_vertical ?? 2}
+              onChange={(e) => handleNoiseChange({ size_vertical: Number(e.target.value) || 1 })}
             />
           </FormField>
         </FormGroup>

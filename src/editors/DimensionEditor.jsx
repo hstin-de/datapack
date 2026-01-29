@@ -3,6 +3,70 @@ import { Button, Card, FormField, FormGroup, Input, Select } from '../ui';
 import { ResourceLocationInput, RegistryTagInput } from '../components';
 
 const NOISE_PARAMS = ['temperature', 'humidity', 'continentalness', 'erosion', 'weirdness', 'depth', 'offset'];
+const SCALABLE_PARAMS = ['temperature', 'humidity', 'continentalness', 'erosion', 'weirdness', 'depth'];
+
+const MAX_SPAN = 4; // noise space is roughly -2 to 2
+
+function getParamSpan(value) {
+  if (Array.isArray(value)) return Math.abs(value[1] - value[0]);
+  return 0;
+}
+
+function computeBiomeSize(params) {
+  let totalSpan = 0;
+  let rangeCount = 0;
+  for (const key of SCALABLE_PARAMS) {
+    const v = params[key];
+    if (v != null) {
+      totalSpan += getParamSpan(v);
+      rangeCount++;
+    }
+  }
+  const avgSpan = rangeCount > 0 ? totalSpan / rangeCount : 0;
+  const offset = typeof params.offset === 'number' ? params.offset : 0;
+  // Combine: range contribution (70%) + offset contribution (30%)
+  const rangeScore = Math.min(avgSpan / MAX_SPAN, 1);
+  const offsetScore = Math.min(Math.max(offset, 0), 1);
+  const score = rangeScore * 0.7 + offsetScore * 0.3;
+  return Math.max(1, Math.min(10, Math.round(1 + score * 9)));
+}
+
+function applyBiomeSize(params, targetSize) {
+  const currentSize = computeBiomeSize(params);
+  if (currentSize === targetSize) return params;
+
+  // Target score from size (1-10 → 0-1)
+  const targetScore = (targetSize - 1) / 9;
+  const targetRangeScore = Math.min(targetScore / 0.7, 1); // allocate to ranges first
+  const targetAvgSpan = targetRangeScore * MAX_SPAN;
+
+  const newParams = { ...params };
+
+  // Scale each range param to achieve the target average span
+  for (const key of SCALABLE_PARAMS) {
+    const v = params[key];
+    if (v == null) continue;
+    if (Array.isArray(v)) {
+      const currentSpan = Math.abs(v[1] - v[0]);
+      const mid = (v[0] + v[1]) / 2;
+      const newHalf = (currentSpan > 0.001 ? targetAvgSpan : targetAvgSpan) / 2;
+      // Scale proportionally but keep center
+      const factor = currentSpan > 0.001 ? targetAvgSpan / currentSpan : 1;
+      const scaledHalf = currentSpan > 0.001 ? (currentSpan / 2) * factor : newHalf;
+      newParams[key] = [
+        Math.round((mid - scaledHalf) * 1000) / 1000,
+        Math.round((mid + scaledHalf) * 1000) / 1000
+      ];
+    }
+  }
+
+  // Adjust offset: remaining score goes to offset
+  const remainingScore = Math.max(0, targetScore - targetRangeScore * 0.7);
+  const targetOffset = Math.min(1, remainingScore / 0.3);
+  newParams.offset = Math.round(targetOffset * 1000) / 1000;
+
+  return newParams;
+}
 
 function NoiseParamInput({ label, value, onChange }) {
   const isRange = Array.isArray(value);
@@ -76,15 +140,31 @@ const BiomeRow = memo(function BiomeRow({ entry, onChangeBiome, onChangeEntry, o
         <Button variant="ghost" size="sm" onClick={onRemove} title="Remove biome">×</Button>
       </div>
       {expanded && typeof entry === 'object' && (
-        <div className="multi-noise-biome-entry__params">
-          {NOISE_PARAMS.map((param) => (
-            <NoiseParamInput
-              key={param}
-              label={param}
-              value={params[param] ?? 0}
-              onChange={(val) => onChangeEntry({ ...entry, parameters: { ...params, [param]: val } })}
+        <div className="multi-noise-biome-entry__detail">
+          <div className="multi-noise-biome-entry__size">
+            <label className="noise-param__label">Biome Size</label>
+            <span className="multi-noise-biome-entry__size-value">{computeBiomeSize(params)}</span>
+            <input
+              type="range"
+              min="1"
+              max="10"
+              step="1"
+              value={computeBiomeSize(params)}
+              onChange={(e) => onChangeEntry({ ...entry, parameters: applyBiomeSize(params, Number(e.target.value)) })}
+              className="multi-noise-biome-entry__size-slider"
             />
-          ))}
+            <span className="multi-noise-biome-entry__size-hint">1 = klein, 10 = groß</span>
+          </div>
+          <div className="multi-noise-biome-entry__params">
+            {NOISE_PARAMS.map((param) => (
+              <NoiseParamInput
+                key={param}
+                label={param}
+                value={params[param] ?? 0}
+                onChange={(val) => onChangeEntry({ ...entry, parameters: { ...params, [param]: val } })}
+              />
+            ))}
+          </div>
         </div>
       )}
     </div>

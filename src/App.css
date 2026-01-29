@@ -666,12 +666,73 @@
 }
 
 
+.multi-noise-biome-entry__detail {
+  border-top: 1px solid var(--ui-border-subtle);
+}
+
+.multi-noise-biome-entry__size {
+  display: flex;
+  align-items: center;
+  gap: var(--ui-space-2);
+  padding: var(--ui-space-2) var(--ui-space-3);
+  border-bottom: 1px solid var(--ui-border-subtle);
+}
+
+.multi-noise-biome-entry__size-value {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ui-text);
+  min-width: 20px;
+  text-align: center;
+}
+
+.multi-noise-biome-entry__size-slider {
+  flex: 1;
+  max-width: 200px;
+  accent-color: var(--ui-primary);
+}
+
+.multi-noise-biome-entry__size-hint {
+  font-size: 11px;
+  color: var(--ui-text-muted);
+  margin-left: auto;
+}
+
+.noise-settings-editor__scale {
+  display: flex;
+  align-items: center;
+  gap: var(--ui-space-2);
+  flex-wrap: wrap;
+}
+
+.noise-settings-editor__scale-value {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--ui-text);
+  min-width: 24px;
+  text-align: center;
+}
+
+.noise-settings-editor__scale-slider {
+  flex: 1;
+  min-width: 120px;
+  max-width: 250px;
+  accent-color: var(--ui-primary);
+}
+
+.noise-settings-editor__scale-labels {
+  display: flex;
+  justify-content: space-between;
+  width: 100%;
+  font-size: 11px;
+  color: var(--ui-text-muted);
+}
+
 .multi-noise-biome-entry__params {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
   gap: var(--ui-space-2);
   padding: var(--ui-space-2) var(--ui-space-3);
-  border-top: 1px solid var(--ui-border-subtle);
 }
 
 .noise-param {
