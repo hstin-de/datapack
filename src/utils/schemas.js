@@ -960,7 +960,30 @@ export const dimensionSchema = {
             biome: resourceLocation,
             biomes: {
               type: 'array',
-              items: resourceLocation
+              items: {
+                oneOf: [
+                  resourceLocation,
+                  {
+                    type: 'object',
+                    properties: {
+                      biome: resourceLocation,
+                      parameters: {
+                        type: 'object',
+                        properties: {
+                          temperature: {},
+                          humidity: {},
+                          continentalness: {},
+                          erosion: {},
+                          depth: {},
+                          weirdness: {},
+                          offset: { type: 'number' }
+                        }
+                      }
+                    },
+                    required: ['biome', 'parameters']
+                  }
+                ]
+              }
             },
             scale: { type: 'integer', minimum: 1 }
           },
@@ -1008,7 +1031,30 @@ export const worldPresetSchema = {
                   biome: resourceLocation,
                   biomes: {
                     type: 'array',
-                    items: resourceLocation
+                    items: {
+                      oneOf: [
+                        resourceLocation,
+                        {
+                          type: 'object',
+                          properties: {
+                            biome: resourceLocation,
+                            parameters: {
+                              type: 'object',
+                              properties: {
+                                temperature: {},
+                                humidity: {},
+                                continentalness: {},
+                                erosion: {},
+                                depth: {},
+                                weirdness: {},
+                                offset: { type: 'number' }
+                              }
+                            }
+                          },
+                          required: ['biome', 'parameters']
+                        }
+                      ]
+                    }
                   }
                 },
                 required: ['type']

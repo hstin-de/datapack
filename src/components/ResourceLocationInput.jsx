@@ -8,14 +8,15 @@ export function ResourceLocationInput({
   onChange,
   registry,
   allowTags = false,
+  allowEmpty = false,
   placeholder = 'minecraft:...',
   disabled = false,
   className = '',
   ...props
 }) {
   const validator = useMemo(
-    () => createFieldValidator(validateResourceLocation, { allowTags, registry }),
-    [allowTags, registry]
+    () => createFieldValidator(validateResourceLocation, { allowTags, allowEmpty, registry }),
+    [allowTags, allowEmpty, registry]
   );
 
   const suggestions = useMemo(() => {

@@ -629,6 +629,45 @@
   align-items: center;
 }
 
+.multi-noise-biomes-list {
+  display: grid;
+  gap: var(--ui-space-2);
+  max-height: 400px;
+  overflow-y: auto;
+  padding: var(--ui-space-2);
+  border: 1px solid var(--ui-border-subtle);
+  border-radius: var(--ui-radius-md);
+  background: var(--ui-bg-surface);
+}
+
+.multi-noise-biome-entry {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--ui-space-2);
+  align-items: center;
+}
+
+.multi-noise-biome-entry .remove-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--ui-border);
+  border-radius: var(--ui-radius-sm);
+  background: transparent;
+  color: var(--ui-text-muted);
+  font-size: 18px;
+  cursor: pointer;
+  transition: background 150ms ease, border-color 150ms ease, color 150ms ease;
+}
+
+.multi-noise-biome-entry .remove-btn:hover {
+  background: var(--ui-error-bg);
+  border-color: var(--ui-error);
+  color: var(--ui-error);
+}
+
 @media (max-width: 960px) {
   .app__content {
     grid-template-columns: 1fr;

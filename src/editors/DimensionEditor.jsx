@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { Card, FormField, FormGroup, Input, Select } from '../ui';
+import { Button, Card, FormField, FormGroup, Input, Select } from '../ui';
 import { ResourceLocationInput, RegistryTagInput } from '../components';
 
 const GENERATOR_TYPES = ['minecraft:noise', 'minecraft:flat', 'minecraft:debug'];
@@ -85,15 +85,78 @@ export function DimensionEditor({ value, onChange, id, onIdChange }) {
               )}
 
               {biomeSourceType === 'minecraft:multi_noise' && (
-                <FormField label="Preset">
-                  <ResourceLocationInput
-                    value={biomeSource.preset || ''}
-                    onChange={(val) => handleBiomeSourceChange({ preset: val })}
-                    registry="multi_noise_preset"
-                    allowTags={false}
-                    placeholder="minecraft:overworld"
-                  />
-                </FormField>
+                <>
+                  <FormField label="Preset" hint="Use a preset OR define biomes manually below">
+                    <ResourceLocationInput
+                      value={biomeSource.preset || ''}
+                      onChange={(val) => handleBiomeSourceChange({ preset: val })}
+                      registry="multi_noise_preset"
+                      allowTags={false}
+                      allowEmpty
+                      placeholder="minecraft:overworld"
+                    />
+                  </FormField>
+                  <FormField label={`Biomes${biomeSource.biomes?.length ? ` (${biomeSource.biomes.length})` : ''}`}>
+                    {biomeSource.biomes && biomeSource.biomes.length > 0 && (
+                      <div className="multi-noise-biomes-list">
+                        {biomeSource.biomes.map((entry, idx) => {
+                          const biomeName = typeof entry === 'string' ? entry : entry.biome;
+                          return (
+                            <div key={idx} className="multi-noise-biome-entry">
+                              <ResourceLocationInput
+                                value={biomeName || ''}
+                                onChange={(val) => {
+                                  const newBiomes = [...biomeSource.biomes];
+                                  if (typeof entry === 'string') {
+                                    newBiomes[idx] = val;
+                                  } else {
+                                    newBiomes[idx] = { ...entry, biome: val };
+                                  }
+                                  handleBiomeSourceChange({ biomes: newBiomes });
+                                }}
+                                registry="biome"
+                                allowTags={false}
+                              />
+                              <button
+                                type="button"
+                                className="remove-btn"
+                                onClick={() => {
+                                  const newBiomes = biomeSource.biomes.filter((_, i) => i !== idx);
+                                  handleBiomeSourceChange({ biomes: newBiomes });
+                                }}
+                                title="Remove biome"
+                              >
+                                ×
+                              </button>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      onClick={() => {
+                        const newBiome = {
+                          biome: 'minecraft:plains',
+                          parameters: {
+                            temperature: 0,
+                            humidity: 0,
+                            continentalness: 0,
+                            erosion: 0,
+                            weirdness: 0,
+                            depth: 0,
+                            offset: 0
+                          }
+                        };
+                        const newBiomes = [...(biomeSource.biomes || []), newBiome];
+                        handleBiomeSourceChange({ biomes: newBiomes });
+                      }}
+                    >
+                      Add Biome
+                    </Button>
+                  </FormField>
+                </>
               )}
 
               {biomeSourceType === 'minecraft:checkerboard' && (
