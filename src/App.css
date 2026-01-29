@@ -632,12 +632,20 @@
 .multi-noise-biomes-list {
   display: grid;
   gap: var(--ui-space-2);
-  max-height: 400px;
-  overflow-y: auto;
   padding: var(--ui-space-2);
   border: 1px solid var(--ui-border-subtle);
   border-radius: var(--ui-radius-md);
   background: var(--ui-bg-surface);
+}
+
+.multi-noise-biomes-list__scroll {
+  border-radius: var(--ui-radius-sm);
+}
+
+.multi-noise-biomes-list__filter {
+  position: sticky;
+  top: 0;
+  z-index: 1;
 }
 
 .multi-noise-biome-entry {

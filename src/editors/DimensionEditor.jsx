@@ -1,4 +1,5 @@
-import React, { useCallback, useMemo, useState, memo } from 'react';
+import React, { useCallback, useMemo, useRef, useState, memo } from 'react';
+import { useVirtualizer } from '@tanstack/react-virtual';
 import { Button, Card, FormField, FormGroup, Input, Select } from '../ui';
 import { ResourceLocationInput, RegistryTagInput } from '../components';
 
@@ -171,14 +172,32 @@ const BiomeRow = memo(function BiomeRow({ entry, onChangeBiome, onChangeEntry, o
   );
 });
 
+const BIOME_ROW_HEIGHT = 40;
+
 function BiomeSortedList({ biomes, onBiomesChange }) {
+  const parentRef = useRef(null);
+  const [filter, setFilter] = useState('');
+
   const sortedIndices = useMemo(() => {
-    return biomes.map((entry, idx) => idx).sort((a, b) => {
+    const indices = biomes.map((_, idx) => idx).sort((a, b) => {
       const nameA = (typeof biomes[a] === 'string' ? biomes[a] : biomes[a].biome) || '';
       const nameB = (typeof biomes[b] === 'string' ? biomes[b] : biomes[b].biome) || '';
       return nameA.localeCompare(nameB);
     });
-  }, [biomes]);
+    if (!filter) return indices;
+    const lower = filter.toLowerCase();
+    return indices.filter((idx) => {
+      const name = (typeof biomes[idx] === 'string' ? biomes[idx] : biomes[idx].biome) || '';
+      return name.toLowerCase().includes(lower);
+    });
+  }, [biomes, filter]);
+
+  const virtualizer = useVirtualizer({
+    count: sortedIndices.length,
+    getScrollElement: () => parentRef.current,
+    estimateSize: () => BIOME_ROW_HEIGHT,
+    overscan: 10,
+  });
 
   const handleChangeBiome = useCallback((idx, val) => {
     const newBiomes = [...biomes];
@@ -208,16 +227,47 @@ function BiomeSortedList({ biomes, onBiomesChange }) {
 
   return (
     <div className="multi-noise-biomes-list">
-      {sortedIndices.map((idx) => (
-        <BiomeRow
-          key={idx}
-          entry={biomes[idx]}
-          onChangeBiome={(val) => handleChangeBiome(idx, val)}
-          onChangeEntry={(newEntry) => handleChangeEntry(idx, newEntry)}
-          onDuplicate={() => handleDuplicate(idx)}
-          onRemove={() => handleRemove(idx)}
+      {biomes.length > 50 && (
+        <Input
+          value={filter}
+          onChange={(e) => setFilter(e.target.value)}
+          placeholder="Filter biomes..."
+          className="multi-noise-biomes-list__filter"
         />
-      ))}
+      )}
+      <div
+        ref={parentRef}
+        className="multi-noise-biomes-list__scroll"
+        style={{ height: Math.min(sortedIndices.length * BIOME_ROW_HEIGHT, 500), overflow: 'auto' }}
+      >
+        <div style={{ height: virtualizer.getTotalSize(), position: 'relative' }}>
+          {virtualizer.getVirtualItems().map((virtualRow) => {
+            const idx = sortedIndices[virtualRow.index];
+            return (
+              <div
+                key={idx}
+                ref={virtualizer.measureElement}
+                data-index={virtualRow.index}
+                style={{
+                  position: 'absolute',
+                  top: 0,
+                  left: 0,
+                  width: '100%',
+                  transform: `translateY(${virtualRow.start}px)`,
+                }}
+              >
+                <BiomeRow
+                  entry={biomes[idx]}
+                  onChangeBiome={(val) => handleChangeBiome(idx, val)}
+                  onChangeEntry={(newEntry) => handleChangeEntry(idx, newEntry)}
+                  onDuplicate={() => handleDuplicate(idx)}
+                  onRemove={() => handleRemove(idx)}
+                />
+              </div>
+            );
+          })}
+        </div>
+      </div>
     </div>
   );
 }
